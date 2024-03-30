@@ -4,13 +4,15 @@ public class Startup
 {
     public void ConfigureHost(IHostBuilder hostBuilder)
     {
-        var config = new ConfigurationBuilder()
+        Configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .AddJsonFile("appsettings.development.json", optional: true)
             .AddUserSecrets<Startup>()
             .AddEnvironmentVariables()
             .Build();
 
-        hostBuilder.ConfigureHostConfiguration(builder => builder.AddConfiguration(config));
+        hostBuilder.ConfigureHostConfiguration(builder => builder.AddConfiguration(Configuration));
     }
+
+    internal static IConfiguration Configuration { get; private set; } = null!;
 }

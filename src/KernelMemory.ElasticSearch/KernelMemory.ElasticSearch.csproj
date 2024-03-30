@@ -6,7 +6,7 @@
     <AssemblyName>KernelMemory.ElasticSearch</AssemblyName>
     <RootNamespace>KernelMemory.ElasticSearch</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Nullable></Nullable>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,347 +1,237 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Collections.Immutable;
-//using System.Linq;
-//using System.Runtime.CompilerServices;
-//using System.Threading;
-//using System.Threading.Tasks;
-//using Microsoft.Extensions.Logging;
-//using Microsoft.KernelMemory.AI;
-//using Microsoft.KernelMemory.Diagnostics;
-//using Microsoft.KernelMemory.MemoryStorage;
+﻿using KernelMemory.ElasticSearch;
+using Microsoft.Extensions.Logging;
+using Microsoft.KernelMemory.AI;
+using Microsoft.KernelMemory.Diagnostics;
+using Microsoft.KernelMemory.MemoryStorage;
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 
-//namespace Microsoft.KernelMemory.MongoDbAtlas;
+namespace Microsoft.KernelMemory.MongoDbAtlas;
 
-///// <summary>
-///// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
-///// </summary>
-//public class ElasticSearchMemory : IMemoryDb
-//{
-//    private const string ConnectionNamePrefix = "_ix_";
+/// <summary>
+/// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
+/// </summary>
+public class ElasticSearchMemory : IMemoryDb
+{
+    private const string ConnectionNamePrefix = "_ix_";
 
-//    private readonly ITextEmbeddingGenerator _embeddingGenerator;
-//    private readonly ILogger<ElasticSearchMemory> _log;
-//    private readonly MongoDbAtlasSearchHelper _utils;
+    private readonly ITextEmbeddingGenerator _embeddingGenerator;
+    private readonly ILogger<ElasticSearchMemory> _log;
+    private readonly ElasticSearchHelper _utils;
 
-//    /// <summary>
-//    /// Create a new instance of MongoDbVectorMemory from configuration
-//    /// </summary>
-//    /// <param name="config">Configuration</param>
-//    /// <param name="embeddingGenerator">Embedding generator</param>
-//    /// <param name="log">Application logger</param>
-//    public ElasticSearchMemory(
-//        KernelMemoryElasticSearchConfig config,
-//        ITextEmbeddingGenerator embeddingGenerator,
-//        ILogger<ElasticSearchMemory>? log = null) : base(config)
-//    {
-//        this._embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
-//        this._log = log ?? DefaultLogger<ElasticSearchMemory>.Instance;
-//        this._utils = new MongoDbAtlasSearchHelper(this.Config.ConnectionString, this.Config.DatabaseName);
-//    }
+    private readonly KernelMemoryElasticSearchConfig _config;
 
-//    /// <inheritdoc />
-//    public async Task CreateIndexAsync(string index, int vectorSize, CancellationToken cancellationToken = default)
-//    {
-//        var normalizedIndexName = NormalizeIndexName(index);
-//        // Index name is the name of the collection, so we need to understand if the collection exists
-//        var collectionName = this.GetCollectionName(index);
-//        await this._utils.CreateIndexAsync(collectionName, vectorSize).ConfigureAwait(false);
-//        await this._utils.WaitForIndexToBeReadyAsync(collectionName, 120).ConfigureAwait(false);
+    /// <summary>
+    /// Create a new instance of MongoDbVectorMemory from configuration
+    /// </summary>
+    /// <param name="config">Configuration</param>
+    /// <param name="embeddingGenerator">Embedding generator</param>
+    /// <param name="log">Application logger</param>
+    public ElasticSearchMemory(
+        KernelMemoryElasticSearchConfig config,
+        ITextEmbeddingGenerator embeddingGenerator,
+        ILogger<ElasticSearchMemory>? log = null)
+    {
+        this._embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
+        this._log = log ?? DefaultLogger<ElasticSearchMemory>.Instance;
+        this._config = config;
+        this._utils = new ElasticSearchHelper(this._config);
+    }
 
-//        // Keep tracks of created indexes.
-//        var collection = this.Database.GetCollection<BsonDocument>(GetIndexListCollectionName());
-//        // upsert the name of the index
-//        var filter = Builders<BsonDocument>.Filter.Eq("_id", normalizedIndexName);
-//        var update = Builders<BsonDocument>.Update.Set("index", normalizedIndexName).Set("lastCreateIndex", DateTime.UtcNow);
-//        await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
-//    }
+    /// <inheritdoc />
+    public Task CreateIndexAsync(string index, int vectorSize, CancellationToken cancellationToken = default)
+    {
+        string normalized = GetRealIndexName(index);
+        return this._utils.EnsureIndexAsync(normalized, vectorSize, cancellationToken);
+    }
 
-//    /// <inheritdoc />
-//    public async Task DeleteIndexAsync(string index, CancellationToken cancellationToken = default)
-//    {
-//        var normalizedIndexName = NormalizeIndexName(index);
-//        if (this.Config.UseSingleCollectionForVectorSearch)
-//        {
-//            // Actually if we use a single collection we do not delete the entire collection we simply delete records of the index
-//            var collection = this.GetCollectionFromIndexName(index);
-//            await collection.DeleteManyAsync(x => x.Index == normalizedIndexName, cancellationToken: cancellationToken).ConfigureAwait(false);
-//        }
-//        else
-//        {
-//            var collectionName = this.GetCollectionName(index);
-//            await this._utils.DeleteIndicesAsync(collectionName).ConfigureAwait(false);
-//            await this.Database.DropCollectionAsync(collectionName, cancellationToken).ConfigureAwait(false);
-//        }
+    /// <inheritdoc />
+    public async Task DeleteIndexAsync(string index, CancellationToken cancellationToken = default)
+    {
+        string normalized = GetRealIndexName(index);
+        await this._utils.DeleteIndexAsync(normalized, cancellationToken); 
+    }
 
-//        var collectionIndexList = this.Database.GetCollection<BsonDocument>(GetIndexListCollectionName());
-//        await collectionIndexList.DeleteOneAsync(x => x["_id"] == index, cancellationToken: cancellationToken).ConfigureAwait(false);
-//    }
+    private string GetRealIndexName(string index)
+    {
+        var indexName = $"{this._config.IndexPrefix}{index}";
+        var normalized = NormalizeIndexName(indexName);
+        return normalized;
+    }
 
-//    /// <inheritdoc />
-//    public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
-//    {
-//        // We load index from the index list collection
-//        var collection = this.Database.GetCollection<BsonDocument>(GetIndexListCollectionName());
-//        var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken: cancellationToken).ConfigureAwait(false);
-//        return cursor.ToEnumerable(cancellationToken: cancellationToken).Select(x => x["_id"].AsString).ToImmutableArray();
-//    }
+    /// <inheritdoc />
+    public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
+    {
+        //// We load index from the index list collection
+        //var collection = this.Database.GetCollection<BsonDocument>(GetIndexListCollectionName());
+        //var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken: cancellationToken).ConfigureAwait(false);
+        //return cursor.ToEnumerable(cancellationToken: cancellationToken).Select(x => x["_id"].AsString).ToImmutableArray();
 
-//    /// <inheritdoc />
-//    public Task DeleteAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
-//    {
-//        var collection = this.GetCollectionFromIndexName(index);
-//        return collection.DeleteOneAsync(x => x.Id == record.Id, cancellationToken: cancellationToken);
-//    }
+        throw new NotImplementedException();
+    }
 
-//    /// <inheritdoc />
-//    public async IAsyncEnumerable<MemoryRecord> GetListAsync(
-//        string index,
-//        ICollection<MemoryFilter>? filters = null,
-//        int limit = 1,
-//        bool withEmbeddings = false,
-//        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-//    {
-//        if (limit <= 0)
-//        {
-//            limit = 10;
-//        }
+    /// <inheritdoc />
+    public Task DeleteAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+        //var collection = this.GetCollectionFromIndexName(index);
+        //return collection.DeleteOneAsync(x => x.Id == record.Id, cancellationToken: cancellationToken);
+    }
 
-//        // Need to create a query and execute it without using $vector
-//        var collection = this.GetCollectionFromIndexName(index);
-//        var finalFilter = this.TranslateFilters(filters, index);
+    /// <inheritdoc />
+    public IAsyncEnumerable<MemoryRecord> GetListAsync(
+        string index,
+        ICollection<MemoryFilter>? filters = null,
+        int limit = 1,
+        bool withEmbeddings = false,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
 
-//        // We need to perform a simple query without using vector search
-//        var cursor = await collection
-//            .FindAsync(finalFilter,
-//                new FindOptions<MongoDbAtlasMemoryRecord>()
-//                {
-//                    Limit = limit
-//                },
-//                cancellationToken: cancellationToken).ConfigureAwait(false);
-//        var documents = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
+        //if (limit <= 0)
+        //{
+        //    limit = 10;
+        //}
 
-//        foreach (var document in documents)
-//        {
-//            var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
+        //// Need to create a query and execute it without using $vector
+        //var collection = this.GetCollectionFromIndexName(index);
+        //var finalFilter = this.TranslateFilters(filters, index);
 
-//            yield return memoryRecord;
-//        }
-//    }
+        //// We need to perform a simple query without using vector search
+        //var cursor = await collection
+        //    .FindAsync(finalFilter,
+        //        new FindOptions<MongoDbAtlasMemoryRecord>()
+        //        {
+        //            Limit = limit
+        //        },
+        //        cancellationToken: cancellationToken).ConfigureAwait(false);
+        //var documents = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
 
-//    /// <inheritdoc />
-//    public async IAsyncEnumerable<(MemoryRecord, double)> GetSimilarListAsync(
-//        string index,
-//        string text,
-//        ICollection<MemoryFilter>? filters = null,
-//        double minRelevance = 0,
-//        int limit = 1,
-//        bool withEmbeddings = false,
-//        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-//    {
-//        if (limit <= 0)
-//        {
-//            limit = 10;
-//        }
+        //foreach (var document in documents)
+        //{
+        //    var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
 
-//        // Need to create a search query and execute it
-//        var collectionName = this.GetCollectionName(index);
-//        var embeddings = await this._embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
+        //    yield return memoryRecord;
+        //}
+    }
 
-//        // Define vector embeddings to search
-//        var vector = embeddings.Data.Span.ToArray();
+    /// <inheritdoc />
+    public IAsyncEnumerable<(MemoryRecord, double)> GetSimilarListAsync(
+        string index,
+        string text,
+        ICollection<MemoryFilter>? filters = null,
+        double minRelevance = 0,
+        int limit = 1,
+        bool withEmbeddings = false,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
 
-//        // Need to create the filters
-//        var finalFilter = this.TranslateFilters(filters, index);
+        //if (limit <= 0)
+        //{
+        //    limit = 10;
+        //}
 
-//        var options = new VectorSearchOptions<MongoDbAtlasMemoryRecord>()
-//        {
-//            IndexName = this._utils.GetIndexName(collectionName),
-//            NumberOfCandidates = limit,
-//            Filter = finalFilter
-//        };
-//        var collection = this.GetCollectionFromIndexName(index);
+        //// Need to create a search query and execute it
+        //var collectionName = this.GetCollectionName(index);
+        //var embeddings = await this._embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
 
-//        // Run query
-//        var documents = await collection.Aggregate()
-//            .VectorSearch(m => m.Embedding, vector, limit, options)
-//            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        //// Define vector embeddings to search
+        //var vector = embeddings.Data.Span.ToArray();
 
-//        // If you check documentation Atlas normalize the score with formula
-//        // score = (1 + cosine/dot_product(v1,v2)) / 2
-//        // Thus it does not output the real cosine similarity, this is annoying so we
-//        // need to recompute cosine similarity using the embeddings.
-//        foreach (var document in documents)
-//        {
-//            var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
+        //// Need to create the filters
+        //var finalFilter = this.TranslateFilters(filters, index);
 
-//            // we have score that is normalized, so we need to recompute similarity to have a real cosine distance
-//            var cosineSimilarity = CosineSim(embeddings, document.Embedding);
-//            if (cosineSimilarity < minRelevance)
-//            {
-//                //we have reached the limit for minimum relevance so we can stop iterating
-//                break;
-//            }
+        //var options = new VectorSearchOptions<MongoDbAtlasMemoryRecord>()
+        //{
+        //    IndexName = this._utils.GetIndexName(collectionName),
+        //    NumberOfCandidates = limit,
+        //    Filter = finalFilter
+        //};
+        //var collection = this.GetCollectionFromIndexName(index);
 
-//            yield return (memoryRecord, cosineSimilarity);
-//        }
-//    }
+        //// Run query
+        //var documents = await collection.Aggregate()
+        //    .VectorSearch(m => m.Embedding, vector, limit, options)
+        //    .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-//    /// <inheritdoc />
-//    public async Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
-//    {
-//        var normalizedIndexName = NormalizeIndexName(index);
-//        var collection = this.GetCollectionFromIndexName(index);
-//        MongoDbAtlasMemoryRecord mongoRecord = new()
-//        {
-//            Id = record.Id,
-//            Index = normalizedIndexName,
-//            Embedding = record.Vector.Data.ToArray(),
-//            Tags = record.Tags.Select(x => new MongoDbAtlasMemoryRecord.Tag(x.Key, x.Value.ToArray())).ToList(),
-//            Payloads = record.Payload.Select(x => new MongoDbAtlasMemoryRecord.Payload(x.Key, x.Value)).ToList()
-//        };
+        //// If you check documentation Atlas normalize the score with formula
+        //// score = (1 + cosine/dot_product(v1,v2)) / 2
+        //// Thus it does not output the real cosine similarity, this is annoying so we
+        //// need to recompute cosine similarity using the embeddings.
+        //foreach (var document in documents)
+        //{
+        //    var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
 
-//        await collection.InsertOneAsync(mongoRecord, cancellationToken: cancellationToken).ConfigureAwait(false);
-//        await this.Config.AfterIndexCallbackAsync().ConfigureAwait(false);
-//        return record.Id;
-//    }
+        //    // we have score that is normalized, so we need to recompute similarity to have a real cosine distance
+        //    var cosineSimilarity = CosineSim(embeddings, document.Embedding);
+        //    if (cosineSimilarity < minRelevance)
+        //    {
+        //        //we have reached the limit for minimum relevance so we can stop iterating
+        //        break;
+        //    }
 
-//    private FilterDefinition<MongoDbAtlasMemoryRecord>? TranslateFilters(ICollection<MemoryFilter>? filters, string index)
-//    {
-//        List<FilterDefinition<MongoDbAtlasMemoryRecord>> outerFiltersArray = new();
-//        foreach (var filter in filters ?? Array.Empty<MemoryFilter>())
-//        {
-//            var thisFilter = filter.GetFilters().ToArray();
-//            List<FilterDefinition<MongoDbAtlasMemoryRecord>> filtersArray = new();
-//            foreach (var singleFilter in thisFilter)
-//            {
-//                var condition = Builders<MongoDbAtlasMemoryRecord>.Filter.And(
-//                    Builders<MongoDbAtlasMemoryRecord>.Filter.Eq("Tags.Key", singleFilter.Key),
-//                    Builders<MongoDbAtlasMemoryRecord>.Filter.Eq("Tags.Values", singleFilter.Value)
-//                );
-//                filtersArray.Add(condition);
-//            }
+        //    yield return (memoryRecord, cosineSimilarity);
+        //}
+    }
 
-//            // if we have more than one condition, we need to compose all conditions with AND
-//            // but if we have only a single filter we can directly use the filter.
-//            if (filtersArray.Count > 1)
-//            {
-//                // More than one condition we need to create the condition
-//                var andFilter = Builders<MongoDbAtlasMemoryRecord>.Filter.And(filtersArray);
-//                outerFiltersArray.Add(andFilter);
-//            }
-//            else if (filtersArray.Count == 1)
-//            {
-//                // We do not need to include an and filter because we have only one condition
-//                outerFiltersArray.Add(filtersArray[0]);
-//            }
-//        }
+    /// <inheritdoc />
+    public async Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+        //var normalizedIndexName = NormalizeIndexName(index);
+        //var collection = this.GetCollectionFromIndexName(index);
+        //MongoDbAtlasMemoryRecord mongoRecord = new()
+        //{
+        //    Id = record.Id,
+        //    Index = normalizedIndexName,
+        //    Embedding = record.Vector.Data.ToArray(),
+        //    Tags = record.Tags.Select(x => new MongoDbAtlasMemoryRecord.Tag(x.Key, x.Value.ToArray())).ToList(),
+        //    Payloads = record.Payload.Select(x => new MongoDbAtlasMemoryRecord.Payload(x.Key, x.Value)).ToList()
+        //};
 
-//        FilterDefinition<MongoDbAtlasMemoryRecord>? finalFilter = null;
+        //await collection.InsertOneAsync(mongoRecord, cancellationToken: cancellationToken).ConfigureAwait(false);
+        //await this.Config.AfterIndexCallbackAsync().ConfigureAwait(false);
+        //return record.Id;
+    }
 
-//        // Outer filters must be composed in or
-//        if (outerFiltersArray.Count > 1)
-//        {
-//            finalFilter = Builders<MongoDbAtlasMemoryRecord>.Filter.Or(outerFiltersArray);
-//        }
-//        else if (outerFiltersArray.Count == 1)
-//        {
-//            // We do not need to include an or filter because we have only one condition
-//            finalFilter = outerFiltersArray[0];
-//        }
+    private static string NormalizeIndexName(string indexName)
+    {
+        if (string.IsNullOrWhiteSpace(indexName))
+        {
+            throw new ArgumentNullException(nameof(indexName), "The index name is empty");
+        }
 
-//        // Remember that if we are using a single collection for all records we need to add an index filter
-//        if (this.Config.UseSingleCollectionForVectorSearch)
-//        {
-//            var indexFilter = Builders<MongoDbAtlasMemoryRecord>.Filter.Eq("Index", index);
-//            if (finalFilter == null)
-//            {
-//                finalFilter = indexFilter;
-//            }
-//            else
-//            {
-//                // Compose in and
-//                finalFilter = Builders<MongoDbAtlasMemoryRecord>.Filter.And(indexFilter, finalFilter);
-//            }
-//        }
+        return indexName.Replace("_", "", StringComparison.OrdinalIgnoreCase);
+    }
 
-//        return finalFilter;
-//    }
+    /// <summary>
+    /// Due to different score system of MongoDB Atlas that normalized cosine
+    /// we need to manually recompute the cosine similarity distance manually
+    /// for each vector to have a real cosine similarity distance returned.
+    /// </summary>
+    private static double CosineSim(Embedding vec1, float[] vec2)
+    {
+        var v1 = vec1.Data.ToArray();
+        var v2 = vec2;
 
-//    private IMongoCollection<MongoDbAtlasMemoryRecord> GetCollectionFromIndexName(string indexName)
-//    {
-//        var collectionName = this.GetCollectionName(NormalizeIndexName(indexName));
-//        return this.GetCollection<MongoDbAtlasMemoryRecord>(collectionName);
-//    }
+        int size = vec1.Length;
+        double dot = 0.0d;
+        double m1 = 0.0d;
+        double m2 = 0.0d;
+        for (int n = 0; n < size; n++)
+        {
+            dot += v1[n] * v2[n];
+            m1 += Math.Pow(v1[n], 2);
+            m2 += Math.Pow(v2[n], 2);
+        }
 
-//    private string GetCollectionName(string indexName)
-//    {
-//        var normalizedIndexName = NormalizeIndexName(indexName);
-//        if (this.Config.UseSingleCollectionForVectorSearch)
-//        {
-//            return $"{ConnectionNamePrefix}_kernel_memory_single_index";
-//        }
+        double cosineSimilarity = dot / (Math.Sqrt(m1) * Math.Sqrt(m2));
+        return cosineSimilarity;
+    }
 
-//        return $"{ConnectionNamePrefix}{normalizedIndexName}";
-//    }
 
-//    /// <summary>
-//    /// Due to different score system of MongoDB Atlas that normalized cosine
-//    /// we need to manually recompute the cosine similarity distance manually
-//    /// for each vector to have a real cosine similarity distance returned.
-//    /// </summary>
-//    private static double CosineSim(Embedding vec1, float[] vec2)
-//    {
-//        var v1 = vec1.Data.ToArray();
-//        var v2 = vec2;
-
-//        int size = vec1.Length;
-//        double dot = 0.0d;
-//        double m1 = 0.0d;
-//        double m2 = 0.0d;
-//        for (int n = 0; n < size; n++)
-//        {
-//            dot += v1[n] * v2[n];
-//            m1 += Math.Pow(v1[n], 2);
-//            m2 += Math.Pow(v2[n], 2);
-//        }
-
-//        double cosineSimilarity = dot / (Math.Sqrt(m1) * Math.Sqrt(m2));
-//        return cosineSimilarity;
-//    }
-
-//    private static string GetIndexListCollectionName()
-//    {
-//        return $"{ConnectionNamePrefix}_kernel_memory_index_lists";
-//    }
-
-//    private static MemoryRecord FromMongodbMemoryRecord(MongoDbAtlasMemoryRecord doc, bool withEmbeddings)
-//    {
-//        var record = new MemoryRecord
-//        {
-//            Id = doc.Id,
-//            Vector = withEmbeddings ? doc.Embedding : Array.Empty<float>(),
-//        };
-
-//        foreach (var tag in doc.Tags)
-//        {
-//            record.Tags[tag.Key] = tag.Values.ToList();
-//        }
-
-//        foreach (var payload in doc.Payloads)
-//        {
-//            record.Payload[payload.Key] = payload.Value;
-//        }
-
-//        return record;
-//    }
-
-//    private static string NormalizeIndexName(string indexName)
-//    {
-//        if (string.IsNullOrWhiteSpace(indexName))
-//        {
-//            throw new ArgumentNullException(nameof(indexName), "The index name is empty");
-//        }
-
-//        return indexName.Replace("_", "-", StringComparison.OrdinalIgnoreCase);
-//    }
-//}
+}

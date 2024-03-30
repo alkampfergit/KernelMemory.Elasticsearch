@@ -1,73 +1,38 @@
-﻿//// Copyright (c) Microsoft. All rights reserved.
-
-//using FunctionalTests.DefaultTestCases;
+﻿//using KernelMemory.ElasticSearch;
 //using Microsoft.KernelMemory;
-//using Microsoft.KernelMemory.MongoDbAtlas;
 //using Microsoft.TestHelpers;
 
 //namespace MongoDbAtlas.FunctionalTests;
 
-//public class DefaultTestsSingleCollection : DefaultTests
+//public class DefaultTestsConfigurationBase : DefaultTests
 //{
-//    public DefaultTestsSingleCollection(IConfiguration cfg, ITestOutputHelper output)
+//    public DefaultTestsConfigurationBase(IConfiguration cfg, ITestOutputHelper output)
 //        : base(cfg, output, multiCollection: false)
 //    {
 //    }
 //}
 
-//public class DefaultTestsMultipleCollections : DefaultTests
+//internal abstract class DefaultTests : BaseFunctionalTestCase
 //{
-//    public DefaultTestsMultipleCollections(IConfiguration cfg, ITestOutputHelper output)
-//        : base(cfg, output, multiCollection: true)
-//    {
-//    }
-//}
+//    protected internal ElasticSearchHelper Helper { get; }
 
-//public abstract class DefaultTests : BaseFunctionalTestCase
-//{
 //    private readonly MemoryServerless _memory;
 
 //    protected DefaultTests(IConfiguration cfg, ITestOutputHelper output, bool multiCollection) : base(cfg, output)
 //    {
 //        Assert.False(string.IsNullOrEmpty(this.OpenAiConfig.APIKey), "OpenAI API Key is empty");
 
-//        if (multiCollection)
-//        {
-//            // this._config = this.MongoDbAtlasConfig;
-//            this.MongoDbAtlasConfig
-//                .WithSingleCollectionForVectorSearch(false)
-//                // Need to wait for atlas to grab the data from the collection and index.
-//                .WithAfterIndexCallback(async () => await Task.Delay(2000));
+//        // if you want you can customize.
+//        // this.ElasticSearchConfig
 
-//            this.MongoDbAtlasConfig.DatabaseName += "multicoll";
-//        }
-//        else
-//        {
-//            this.MongoDbAtlasConfig
-//                .WithSingleCollectionForVectorSearch(true)
-//                //Need to wait for atlas to grab the data from the collection and index.
-//                .WithAfterIndexCallback(async () => await Task.Delay(2000));
-//        }
-
-//        // Clear all content in any collection before running the test.
-//        var ash = new MongoDbAtlasSearchHelper(this.MongoDbAtlasConfig.ConnectionString, this.MongoDbAtlasConfig.DatabaseName);
-//        if (this.MongoDbAtlasConfig.UseSingleCollectionForVectorSearch)
-//        {
-//            //delete everything for every collection
-//            ash.DropAllDocumentsFromCollectionsAsync().Wait();
-//        }
-//        else
-//        {
-//            //drop the entire db to be sure we can start with a clean test.
-//            ash.DropDatabaseAsync().Wait();
-//        }
+//        Helper = new ElasticSearchHelper(this.ElasticSearchConfig);
 
 //        this._memory = new KernelMemoryBuilder()
 //            .WithSearchClientConfig(new SearchClientConfig { EmptyAnswer = NotFound })
-//            .WithOpenAI(this.OpenAiConfig)
+//            .WithAzureOpenAITextGeneration(this.OpenAiConfig)
 //            // .WithAzureOpenAITextGeneration(this.AzureOpenAITextConfiguration)
 //            // .WithAzureOpenAITextEmbeddingGeneration(this.AzureOpenAIEmbeddingConfiguration)
-//            .WithMongoDbAtlasMemoryDb(this.MongoDbAtlasConfig)
+//            .WithElasticSearch(this.ElasticSearchConfig)
 //            .Build<MemoryServerless>();
 //    }
 
