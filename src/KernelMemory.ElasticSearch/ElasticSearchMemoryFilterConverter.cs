@@ -9,7 +9,7 @@ namespace KernelMemory.ElasticSearch;
 internal static class ElasticSearchMemoryFilterConverter
 {
     internal static QueryDescriptor<object> CreateQueryDescriptorFromMemoryFilter(
-        IReadOnlyCollection<MemoryFilter> filters)
+        IEnumerable<MemoryFilter>? filters)
     {
         //need to get all filters that have conditions
         var realFilters = filters?

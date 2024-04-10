@@ -1,7 +1,10 @@
 ﻿using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Aggregations;
+using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.QueryDsl;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,5 +38,21 @@ internal class ElasticSearchQueryHelper
            .Query(queryDescriptor),
             CancellationToken.None);
         return resp.Total;
+    }
+
+    public async Task<IReadOnlyCollection<Hit<object>>> ExecuteQueryAsync(
+        string index,
+        int limit,
+        QueryDescriptor<object> queryDescriptor,
+        CancellationToken cancellationToken = default)
+    {
+        await _client.Indices.RefreshAsync(index, cancellationToken);
+        var resp = await _client.SearchAsync<object>(s => s
+           .Index(index)
+           .Query(queryDescriptor)
+           .From(0)
+           .Size(limit),
+            CancellationToken.None);
+        return resp.Hits;
     }
 }

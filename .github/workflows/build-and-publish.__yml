@@ -1,0 +1,52 @@
+name: BuildAndPublish
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - feature/*
+      - hotfix/*
+      - release/*
+  pull_request: 
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+        ports:
+          - 9800:9200
+        options: --health-cmd="curl http://localhost:9200/_cluster/health" -e "discovery.type=single-node" -e "xpack.security.enabled=false"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup dotnet 3
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.x
+
+      - name: Setup dotnet 8
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 8.x
+
+      - name: Run Elasticsearch
+        run: |
+          docker run -d --name elasticsearch -p 9800:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+
+      - name: build and publish
+        shell: powershell
+        run: |
+          dotnet tool install --global GitVersion.Tool --version 5.*
+          ./build.ps1 -nugetPublish $false -nugetApiKey ${{ secrets.NUGET_API_KEY }}
+
+      - name: Publish coverage report to coveralls.io
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./src/DotNetCoreCryptography.Tests/TestResults/coverage.info 

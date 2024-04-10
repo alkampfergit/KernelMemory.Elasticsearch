@@ -66,6 +66,6 @@ public class ElasticSearchHelperTests : BasicElasticTestFixture
     //[Fact]
     //public async Task DeleteAllTestIndices()
     //{
-    //    await ElasticSearchHelper.PurgeIndexWithPrefixAsync("kmtest", CancellationToken.None);
+    //    await ElasticSearchHelper.PurgeIndexWithPrefixAsync("testkm", CancellationToken.None);
     //}
 }

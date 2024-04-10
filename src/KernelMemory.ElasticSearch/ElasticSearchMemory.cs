@@ -16,8 +16,6 @@ namespace Microsoft.KernelMemory.MongoDbAtlas;
 /// </summary>
 public class ElasticSearchMemory : IMemoryDb
 {
-    private const string ConnectionNamePrefix = "_ix_";
-
     private readonly ITextEmbeddingGenerator _embeddingGenerator;
     private readonly ILogger<ElasticSearchMemory> _log;
     private readonly ElasticSearchHelper _utils;
@@ -63,14 +61,9 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
+    public Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
     {
-        //// We load index from the index list collection
-        //var collection = this.Database.GetCollection<BsonDocument>(GetIndexListCollectionName());
-        //var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty, cancellationToken: cancellationToken).ConfigureAwait(false);
-        //return cursor.ToEnumerable(cancellationToken: cancellationToken).Select(x => x["_id"].AsString).ToImmutableArray();
-
-        throw new NotImplementedException();
+        return _utils.GetIndexesNamesAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -82,40 +75,34 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public IAsyncEnumerable<MemoryRecord> GetListAsync(
+    public async IAsyncEnumerable<MemoryRecord> GetListAsync(
         string index,
         ICollection<MemoryFilter>? filters = null,
         int limit = 1,
         bool withEmbeddings = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var query = ElasticSearchMemoryFilterConverter.CreateQueryDescriptorFromMemoryFilter(filters);
 
-        //if (limit <= 0)
-        //{
-        //    limit = 10;
-        //}
+        if (limit <= 0)
+        {
+            limit = 10;
+        }
 
-        //// Need to create a query and execute it without using $vector
-        //var collection = this.GetCollectionFromIndexName(index);
-        //var finalFilter = this.TranslateFilters(filters, index);
+        var resp = await _utils.QueryHelper.ExecuteQueryAsync(GetRealIndexName(index), limit, query, cancellationToken);
 
-        //// We need to perform a simple query without using vector search
-        //var cursor = await collection
-        //    .FindAsync(finalFilter,
-        //        new FindOptions<MongoDbAtlasMemoryRecord>()
-        //        {
-        //            Limit = limit
-        //        },
-        //        cancellationToken: cancellationToken).ConfigureAwait(false);
-        //var documents = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
-
+        foreach (var item in resp)
+        {
+            //is a System.Text.Json.JsonElement
+            yield return null;
+        }
         //foreach (var document in documents)
         //{
         //    var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
 
         //    yield return memoryRecord;
         //}
+        throw new NotImplementedException();
     }
 
     /// <inheritdoc />

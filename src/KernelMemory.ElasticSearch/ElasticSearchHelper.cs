@@ -8,6 +8,7 @@ using Microsoft.KernelMemory.Diagnostics;
 using Microsoft.KernelMemory.MemoryStorage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,29 +19,32 @@ internal class ElasticSearchHelper
 {
     private readonly KernelMemoryElasticSearchConfig _kernelMemoryElasticSearchConfig;
     private readonly ElasticsearchClient _client;
-
     private readonly ILogger<ElasticSearchHelper> _logger;
 
     public ElasticSearchHelper(
         KernelMemoryElasticSearchConfig kernelMemoryElasticSearchConfig,
-        ILogger<ElasticSearchHelper> logger = null)
+        ILogger<ElasticSearchHelper>? logger = null)
     {
         _kernelMemoryElasticSearchConfig = kernelMemoryElasticSearchConfig;
         _logger = logger ?? DefaultLogger<ElasticSearchHelper>.Instance;
         var settings = new ElasticsearchClientSettings(new Uri(kernelMemoryElasticSearchConfig.ServerAddress));
 #if DEBUG
         settings = settings
-            //.PrettyJson()
+            .PrettyJson()
             .DisableDirectStreaming(true);
 #else
 #endif
 
         if (!string.IsNullOrEmpty(kernelMemoryElasticSearchConfig.UserName))
         {
-            settings.Authentication(new BasicAuthentication(kernelMemoryElasticSearchConfig.UserName, kernelMemoryElasticSearchConfig.Password));
+            settings.Authentication(new BasicAuthentication(kernelMemoryElasticSearchConfig.UserName, kernelMemoryElasticSearchConfig.Password!));
         }
         _client = new ElasticsearchClient(settings);
+
+        QueryHelper = new ElasticSearchQueryHelper(_client, _kernelMemoryElasticSearchConfig, _logger);
     }
+
+    internal ElasticSearchQueryHelper QueryHelper { get; }
 
     internal List<string> CreatedIndices { get; } = new List<string>();
 
@@ -234,5 +238,12 @@ internal class ElasticSearchHelper
     public ElasticSearchQueryHelper GetQueryHelper()
     {
         return new ElasticSearchQueryHelper(_client, _kernelMemoryElasticSearchConfig, _logger);
+    }
+
+    internal async Task<IEnumerable<string>> GetIndexesNamesAsync(CancellationToken cancellationToken)
+    {
+        var gir = new GetIndexRequest(_kernelMemoryElasticSearchConfig.IndexPrefix + "*");
+        var list = await _client.Indices.GetAsync(gir, cancellationToken);
+        return list.Indices.Keys.Select(k => k.ToString());
     }
 }
