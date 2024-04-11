@@ -33,7 +33,7 @@ internal static class ElasticSearchMemoryFilterConverter
             .Select(ConvertFilterToQuery)
             .ToArray();
 
-        return new QueryDescriptor<object>().Bool(new BoolQuery() 
+        return new QueryDescriptor<object>().Bool(new BoolQuery()
         {
             Should = convertedFilters
         });
@@ -94,7 +94,7 @@ internal static class ElasticSearchMemoryFilterConverter
             }
         }
 
-        return Query.Bool(new BoolQuery() 
+        return Query.Bool(new BoolQuery()
         {
             Must = convertedFilters
         });
@@ -108,11 +108,11 @@ internal static class ElasticSearchMemoryFilterConverter
         };
     }
 
-    private static MatchQuery TagMatchQuery(KeyValuePair<string, string> f)
+    private static MatchQuery TagMatchQuery(KeyValuePair<string, string?> f)
     {
         return new MatchQuery($"tag_{f.Key}")
         {
-            Query = f.Value
+            Query = f.Value!
         };
     }
 }

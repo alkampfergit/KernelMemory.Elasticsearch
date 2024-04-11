@@ -179,7 +179,7 @@ internal class ElasticSearchHelper
         var io = ElasticsearchMemoryRecord.ToIndexableObject(
             memoryRecord,
             _kernelMemoryElasticSearchConfig.IndexablePayloadProperties);
-        var ir = new IndexRequest<object>(io, indexName, io["id"] as string);
+        var ir = new IndexRequest<object>(io, indexName, (string) io["id"]);
         var indexResponse = await _client.IndexAsync<object>(ir, cancellationToken);
 
         if (!indexResponse.IsSuccess())
@@ -232,7 +232,7 @@ internal class ElasticSearchHelper
             return null;
         }
 
-        return (JsonElement)getResponse.Source;
+        return (JsonElement) getResponse.Source!;
     }
 
     public ElasticSearchQueryHelper GetQueryHelper()
