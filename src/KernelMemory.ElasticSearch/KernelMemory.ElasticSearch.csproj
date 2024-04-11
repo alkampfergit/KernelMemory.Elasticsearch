@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <AssemblyName>KernelMemory.ElasticSearch</AssemblyName>
+    <RootNamespace>KernelMemory.ElasticSearch</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.35.240318.2" />
+    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.12.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="KernelMemory.ElasticSearch.FunctionalTests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <PackageId>KernelMemory.ElasticSearch</PackageId>
+    <Product>ElasticSearch connector for Kernel Memory</Product>
+    <Description>ElasticSearch connector for Kernel Memory implements the IDbMemory interface.</Description>
+    <PackageTags>Memory, RAG, Kernel Memory, ElasticSearch, AI, Artificial Intelligence, Embeddings, Vector DB, Vector Search, ETL</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Link="README.md" Pack="true" PackagePath="." Visible="false" />
+  </ItemGroup>
+
+</Project>
