@@ -6,6 +6,7 @@ using Microsoft.KernelMemory.MemoryStorage;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -94,15 +95,8 @@ public class ElasticSearchMemory : IMemoryDb
         foreach (var item in resp)
         {
             //is a System.Text.Json.JsonElement
-            yield return null;
+            yield return ElasticsearchMemoryRecord.MemoryRecordFromJsonElement((JsonElement) item.Source, withEmbeddings);
         }
-        //foreach (var document in documents)
-        //{
-        //    var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
-
-        //    yield return memoryRecord;
-        //}
-        throw new NotImplementedException();
     }
 
     /// <inheritdoc />

@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace KernelMemory.ElasticSearch;
 
@@ -29,7 +28,7 @@ public static class ElasticsearchMemoryRecord
             }
         }
 
-        if (indexablePayloadProperties?.Length > 0) 
+        if (indexablePayloadProperties?.Length > 0)
         {
             foreach (var prop in indexablePayloadProperties)
             {
@@ -55,8 +54,8 @@ public static class ElasticsearchMemoryRecord
     public static MemoryRecord MemoryRecordFromIndexableObject(IDictionary<string, object> indexableObject, bool withEmbedding = true)
     {
         var mr = new MemoryRecord();
-        mr.Id = (String) indexableObject["id"];
-        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>((String) indexableObject["payload"])!;
+        mr.Id = (String)indexableObject["id"];
+        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>((String)indexableObject["payload"])!;
         mr.Payload = desDic.ToDictionary(
             kvp => kvp.Key,
             kvp => ConvertJsonElement(kvp.Value)
@@ -64,11 +63,11 @@ public static class ElasticsearchMemoryRecord
         var tagKeys = indexableObject.Keys.Where(k => k.StartsWith("tag_"));
         foreach (var tagKey in tagKeys)
         {
-            mr.Tags[tagKey.Substring(4)] = (List<string?>) indexableObject[tagKey];
+            mr.Tags[tagKey.Substring(4)] = (List<string?>)indexableObject[tagKey];
         }
         if (withEmbedding)
         {
-            mr.Vector = new Embedding((float[]) indexableObject["vector"]);
+            mr.Vector = new Embedding((float[])indexableObject["vector"]);
         }
         return mr;
     }
@@ -96,7 +95,7 @@ public static class ElasticsearchMemoryRecord
         );
 
         if (withEmbedding)
-         {
+        {
             mr.Vector = new Embedding(jsonElement.GetProperty("vector").EnumerateArray().Select(jv => jv.GetSingle()).ToArray());
         }
 

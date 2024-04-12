@@ -19,9 +19,8 @@ if (Test-Path $nugetTempDir)
 dotnet tool restore
 Assert-LastExecution -message "Unable to restore tooling." -haltExecution $true
 
-$gitVersionOutput = dotnet-gitversion /config .config/GitVersion.yml | Out-String
-Write-host "GitVersion output: $gitVersionOutput"
-$version = $gitVersionOutput | Out-String | ConvertFrom-Json
+$version = dotnet tool run dotnet-gitversion /config .config/GitVersion.yml | Out-String | ConvertFrom-Json
+Write-host "GitVersion output: $version"
 
 Write-Verbose "Parsed value to be returned"
 $assemblyVer = $version.AssemblySemVer 
@@ -40,7 +39,13 @@ dotnet restore "$runningDirectory/src/KernelMemory.ElasticSearch.sln"
 Assert-LastExecution -message "Error in restoring packages." -haltExecution $true
 
 Write-Host "\n\n*******************TESTING SOLUTION*******************"
-dotnet test "$runningDirectory/src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
+dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" `
+    --collect:"XPlat Code Coverage" `
+    --results-directory TestResults/ `
+    --logger "trx;LogFileName=unittests.trx" `
+    --no-restore `
+    -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
 Assert-LastExecution -message "Error in test running." -haltExecution $true
 
 Write-Host "\n\n*******************BUILDING SOLUTION*******************"
