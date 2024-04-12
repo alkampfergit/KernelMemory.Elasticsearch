@@ -55,8 +55,8 @@ public static class ElasticsearchMemoryRecord
     public static MemoryRecord MemoryRecordFromIndexableObject(IDictionary<string, object> indexableObject, bool withEmbedding = true)
     {
         var mr = new MemoryRecord();
-        mr.Id = indexableObject["id"] as string;
-        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>(indexableObject["payload"] as string);
+        mr.Id = (String) indexableObject["id"];
+        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>((String) indexableObject["payload"])!;
         mr.Payload = desDic.ToDictionary(
             kvp => kvp.Key,
             kvp => ConvertJsonElement(kvp.Value)
@@ -64,11 +64,11 @@ public static class ElasticsearchMemoryRecord
         var tagKeys = indexableObject.Keys.Where(k => k.StartsWith("tag_"));
         foreach (var tagKey in tagKeys)
         {
-            mr.Tags[tagKey.Substring(4)] = indexableObject[tagKey] as List<string>;
+            mr.Tags[tagKey.Substring(4)] = (List<string?>) indexableObject[tagKey];
         }
         if (withEmbedding)
         {
-            mr.Vector = new Embedding(indexableObject["vector"] as float[]);
+            mr.Vector = new Embedding((float[]) indexableObject["vector"]);
         }
         return mr;
     }
@@ -79,7 +79,7 @@ public static class ElasticsearchMemoryRecord
     public static MemoryRecord MemoryRecordFromJsonElement(JsonElement jsonElement, bool withEmbedding = true)
     {
         var mr = new MemoryRecord();
-        mr.Id = jsonElement.GetProperty("id").GetString();
+        mr.Id = jsonElement.GetProperty("id").GetString()!;
 
         var eo = jsonElement.EnumerateObject();
         var tagsProperties = eo.Where(eo => eo.Name.StartsWith("tag_"));
@@ -89,7 +89,7 @@ public static class ElasticsearchMemoryRecord
         }
 
         //now get the payload
-        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetProperty("payload").GetString());
+        var desDic = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetProperty("payload").GetString()!)!;
         mr.Payload = desDic.ToDictionary(
             kvp => kvp.Key,
             kvp => ConvertJsonElement(kvp.Value)
@@ -113,7 +113,7 @@ public static class ElasticsearchMemoryRecord
         switch (jsonElement.ValueKind)
         {
             case JsonValueKind.String:
-                return jsonElement.GetString();
+                return jsonElement.GetString()!;
             case JsonValueKind.Number:
                 return jsonElement.GetDouble(); // or GetInt32(), GetInt64(), etc. depending on the expected number type
             case JsonValueKind.True:

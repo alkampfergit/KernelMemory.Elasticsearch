@@ -166,7 +166,7 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public async Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
+    public Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
         //var normalizedIndexName = NormalizeIndexName(index);

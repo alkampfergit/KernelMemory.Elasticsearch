@@ -1,4 +1,6 @@
-﻿namespace KernelMemory.ElasticSearch;
+﻿using System;
+
+namespace KernelMemory.ElasticSearch;
 
 /// <summary>
 /// Represents configuration to use ElasticSearch as memory storage.
@@ -21,7 +23,7 @@ public class KernelMemoryElasticSearchConfig
     /// To support full search we can specify some of the
     /// properties in payload to be searchable.
     /// </summary>
-    public string[] IndexablePayloadProperties { get; set; }
+    public string[] IndexablePayloadProperties { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Allows to specify connection string

@@ -1,9 +1,7 @@
 ﻿using KernelMemory.ElasticSearch.FunctionalTests.Doubles;
 using Microsoft.KernelMemory.MemoryStorage;
 using Microsoft.KernelMemory.MongoDbAtlas;
-using System.Numerics;
 using System.Security.Cryptography;
-using UglyToad.PdfPig.Fonts;
 
 namespace KernelMemory.ElasticSearch.FunctionalTests;
 
@@ -13,7 +11,7 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     private readonly ElasticSearchMemory _sut;
 
     public ElasticSearchMemoryQueryTests(
-        ElasticSearchMemoryQueryTestsTestsFixture fixture) 
+        ElasticSearchMemoryQueryTestsTestsFixture fixture)
     {
         this._fixture = fixture;
         _sut = new ElasticSearchMemory(_fixture.Config!, new TestEmbeddingGenerator());
