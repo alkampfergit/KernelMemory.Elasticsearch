@@ -34,7 +34,7 @@ jobs:
           dotnet tool restore
           Write-Host "GitVersion.Tool installed now try the tool"
           $gv = dotnet tool run dotnet-gitversion /config .config/GitVersion.yml | Out-String | ConvertFrom-Json
-          Write-Host "GitVersion.Tool version is $($gv.Version)"
+          Write-Host "GitVersion.Tool output is $gv"
 
       - name: Run Elasticsearch
         run: |
@@ -105,9 +105,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: pwsh
         run: |
-          dotnet tool run dotnet-sonarscanner begin /k:"alkampfergit_KernelMemory.Elasticsearch" /o:"alkampfergit-github" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          dotnet restore "src/KernelMemory.ElasticSearch.sln"
-          dotnet build "src/KernelMemory.ElasticSearch.sln" --no-restore --configuration debug
-          # dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
-          dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" --no-build
+          dotnet tool run dotnet-sonarscanner begin /k:"alkampfergit_KernelMemory.Elasticsearch" /o:"alkampfergit-github" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.cs.vstest.reportsPaths=TestResults/*.trx /d:sonar.cs.opencover.reportsPaths=TestResults/*/coverage.opencover.xml /d:sonar.coverage.exclusions="**Test*.cs"
+          
+          ./build.ps1
+          
+          # dotnet restore "src/KernelMemory.ElasticSearch.sln"
+          # dotnet build "src/KernelMemory.ElasticSearch.sln" --no-restore --configuration debug
+          # # dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
+          # dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" --no-build
           dotnet tool run dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"

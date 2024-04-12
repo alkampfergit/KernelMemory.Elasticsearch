@@ -18,7 +18,7 @@ internal static class ElasticSearchMemoryFilterConverter
 
         if (realFilters.Count == 0)
         {
-            return new QueryDescriptor<object>().MatchAll();
+            return new QueryDescriptor<object>().MatchAll(new MatchAllQuery());
         }
 
         //ok I really have some conditions, we need to build the querydescriptor.
@@ -46,7 +46,7 @@ internal static class ElasticSearchMemoryFilterConverter
         //lets double check if this filter really has conditions.
         if (innerFilters.Length == 0)
         {
-            return new QueryDescriptor<object>().MatchAll();
+            return new QueryDescriptor<object>().MatchAll(new MatchAllQuery());
         }
 
         if (innerFilters.Length == 1)
