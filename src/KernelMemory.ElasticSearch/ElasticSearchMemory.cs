@@ -94,8 +94,15 @@ public class ElasticSearchMemory : IMemoryDb
 
         foreach (var item in resp)
         {
-            //is a System.Text.Json.JsonElement
-            yield return ElasticsearchMemoryRecord.MemoryRecordFromJsonElement((JsonElement) item.Source, withEmbeddings);
+            //source is a json element
+            if (item.Source is JsonElement je)
+            {
+                yield return ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
+            }
+            else 
+            {
+                _log.LogError("Received an answer from elastic where item.Source is not a JsonElement but is {type}", item.Source?.GetType()?.FullName ?? "null");
+            }
         }
     }
 
