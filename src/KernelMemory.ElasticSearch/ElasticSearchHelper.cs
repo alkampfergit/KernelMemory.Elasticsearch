@@ -246,4 +246,9 @@ internal class ElasticSearchHelper
         var list = await _client.Indices.GetAsync(gir, cancellationToken);
         return list.Indices.Keys.Select(k => k.ToString());
     }
+
+    internal Task RefreshAsync(string indexName)
+    {
+        return _client.Indices.RefreshAsync(indexName); 
+    }
 }

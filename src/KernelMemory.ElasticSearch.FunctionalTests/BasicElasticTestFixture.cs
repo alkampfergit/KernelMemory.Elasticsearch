@@ -7,11 +7,12 @@ public class BasicElasticTestFixture : IAsyncDisposable, IDisposable
 {
     private string? _indexName;
 
-    public BasicElasticTestFixture(IConfiguration cfg)
+    public BasicElasticTestFixture(IConfiguration cfg, IServiceProvider serviceProvider)
     {
         Config = cfg.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>();
         Config!.IndexablePayloadProperties = ["text"];
-        ElasticSearchHelper = new ElasticSearchHelper(Config);
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        ElasticSearchHelper = new ElasticSearchHelper(Config, loggerFactory.CreateLogger<ElasticSearchHelper>());
     }
 
     public KernelMemoryElasticSearchConfig? Config { get; }

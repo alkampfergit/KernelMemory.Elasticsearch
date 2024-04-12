@@ -7,7 +7,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
     {
         protected readonly ElasticSearchMemory _sut;
 
-        public BasicElasticSearchMemoryTests(IConfiguration cfg) : base(cfg)
+        public BasicElasticSearchMemoryTests(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
         {
             ChangeConfig(Config);
             _sut = new ElasticSearchMemory(Config!, new TestEmbeddingGenerator());
@@ -32,7 +32,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
 
     public class CreationIndex : BasicElasticSearchMemoryTests
     {
-        public CreationIndex(IConfiguration cfg) : base(cfg)
+        public CreationIndex(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
         {
         }
 
@@ -50,7 +50,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
 
     public class DeletionIndex : BasicElasticSearchMemoryTests
     {
-        public DeletionIndex(IConfiguration cfg) : base(cfg)
+        public DeletionIndex(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
         {
         }
 
@@ -59,17 +59,23 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
         {
             IndexToDelete.Add("fff1");
             await _sut.CreateIndexAsync("fff1", 4);
-            await _sut.DeleteIndexAsync("fff1");
 
-            //we need to check if the index was created with the correct prefix.
-            var indexInfo = await ElasticSearchHelper.GetIndexMappingAsync("testkmtest1");
+            var realIndexNames = $"{Config!.IndexPrefix}fff1";
+            var mapping = await ElasticSearchHelper.GetIndexMappingAsync(realIndexNames);
+            Assert.NotNull(mapping);
+
+            await _sut.DeleteIndexAsync("fff1");
+            await this.ElasticSearchHelper.RefreshAsync(realIndexNames);
+
+            //ok index must be deleted
+            var indexInfo = await ElasticSearchHelper.GetIndexMappingAsync(realIndexNames);
             Assert.Null(indexInfo);
         }
     }
 
     public class ListIndexes : BasicElasticSearchMemoryTests
     {
-        public ListIndexes(IConfiguration cfg) : base(cfg)
+        public ListIndexes(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
         {
         }
 
@@ -96,7 +102,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
 
     public class ListIndexesWithoutPrefix : BasicElasticSearchMemoryTests
     {
-        public ListIndexesWithoutPrefix(IConfiguration cfg) : base(cfg)
+        public ListIndexesWithoutPrefix(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
         {
         }
 

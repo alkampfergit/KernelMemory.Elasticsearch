@@ -213,6 +213,4 @@ public class ElasticSearchMemory : IMemoryDb
         double cosineSimilarity = dot / (Math.Sqrt(m1) * Math.Sqrt(m2));
         return cosineSimilarity;
     }
-
-
 }
