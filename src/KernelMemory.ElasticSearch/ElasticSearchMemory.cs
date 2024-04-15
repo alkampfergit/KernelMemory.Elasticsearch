@@ -1,4 +1,5 @@
-﻿using KernelMemory.ElasticSearch;
+﻿using Elastic.Clients.Elasticsearch.QueryDsl;
+using KernelMemory.ElasticSearch;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory.AI;
 using Microsoft.KernelMemory.Diagnostics;
@@ -51,7 +52,7 @@ public class ElasticSearchMemory : IMemoryDb
     public async Task DeleteIndexAsync(string index, CancellationToken cancellationToken = default)
     {
         string normalized = GetRealIndexName(index);
-        await this._utils.DeleteIndexAsync(normalized, cancellationToken); 
+        await this._utils.DeleteIndexAsync(normalized, cancellationToken);
     }
 
     private string GetRealIndexName(string index)
@@ -99,7 +100,7 @@ public class ElasticSearchMemory : IMemoryDb
             {
                 yield return ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
             }
-            else 
+            else
             {
                 _log.LogError("Received an answer from elastic where item.Source is not a JsonElement but is {type}", item.Source?.GetType()?.FullName ?? "null");
             }
@@ -107,7 +108,7 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public IAsyncEnumerable<(MemoryRecord, double)> GetSimilarListAsync(
+    public async IAsyncEnumerable<(MemoryRecord, double)> GetSimilarListAsync(
         string index,
         string text,
         ICollection<MemoryFilter>? filters = null,
@@ -116,54 +117,40 @@ public class ElasticSearchMemory : IMemoryDb
         bool withEmbeddings = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var query = ElasticSearchMemoryFilterConverter.CreateQueryDescriptorFromMemoryFilter(filters);
 
-        //if (limit <= 0)
-        //{
-        //    limit = 10;
-        //}
+        if (limit <= 0)
+        {
+            limit = 10;
+        }
 
-        //// Need to create a search query and execute it
-        //var collectionName = this.GetCollectionName(index);
-        //var embeddings = await this._embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
+        Embedding qembed = await this._embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
+        var coll = qembed.Data.ToArray();
 
-        //// Define vector embeddings to search
-        //var vector = embeddings.Data.Span.ToArray();
+        //ok now we need to add a knn query to the elastic search
+        var knnOuterQuery = new QueryDescriptor<object>().Knn(knn => knn
+            .Filter(query)
+            .k(-100)
+            .Field("vector")
+            .NumCandidates(limit * 2)
+            .QueryVector(coll));
 
-        //// Need to create the filters
-        //var finalFilter = this.TranslateFilters(filters, index);
+        var resp = await _utils.QueryHelper.ExecuteQueryAsync(GetRealIndexName(index), limit, knnOuterQuery, cancellationToken);
 
-        //var options = new VectorSearchOptions<MongoDbAtlasMemoryRecord>()
-        //{
-        //    IndexName = this._utils.GetIndexName(collectionName),
-        //    NumberOfCandidates = limit,
-        //    Filter = finalFilter
-        //};
-        //var collection = this.GetCollectionFromIndexName(index);
-
-        //// Run query
-        //var documents = await collection.Aggregate()
-        //    .VectorSearch(m => m.Embedding, vector, limit, options)
-        //    .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-        //// If you check documentation Atlas normalize the score with formula
-        //// score = (1 + cosine/dot_product(v1,v2)) / 2
-        //// Thus it does not output the real cosine similarity, this is annoying so we
-        //// need to recompute cosine similarity using the embeddings.
-        //foreach (var document in documents)
-        //{
-        //    var memoryRecord = FromMongodbMemoryRecord(document, withEmbeddings);
-
-        //    // we have score that is normalized, so we need to recompute similarity to have a real cosine distance
-        //    var cosineSimilarity = CosineSim(embeddings, document.Embedding);
-        //    if (cosineSimilarity < minRelevance)
-        //    {
-        //        //we have reached the limit for minimum relevance so we can stop iterating
-        //        break;
-        //    }
-
-        //    yield return (memoryRecord, cosineSimilarity);
-        //}
+        foreach (var item in resp)
+        {
+            //source is a json element
+            if (item.Source is JsonElement je)
+            {
+                var mr = ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
+                //lets check if we can have cosine similarity direclty returned from the query for now we recalculate
+                yield return (mr, item.Score?? 0);
+            }
+            else
+            {
+                _log.LogError("Received an answer from elastic where item.Source is not a JsonElement but is {type}", item.Source?.GetType()?.FullName ?? "null");
+            }
+        }
     }
 
     /// <inheritdoc />
