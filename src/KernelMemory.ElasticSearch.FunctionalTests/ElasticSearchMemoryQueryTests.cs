@@ -53,7 +53,7 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     [Fact]
     public async Task Brutal_verify_vector()
     {
-        const string sampleQuestion = "sample question";    
+        const string sampleQuestion = "sample question";
         Embedding qembed = await this._embeddingGenerator.GenerateEmbeddingAsync(sampleQuestion, CancellationToken.None);
         var coll = qembed.Data.ToArray();
 

@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.36.240412.1" />
-    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.13.5" />
+    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.36.240415.1" />
+    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.13.6" />
   </ItemGroup>
 
   <ItemGroup>

@@ -130,7 +130,6 @@ public class ElasticSearchMemory : IMemoryDb
         //ok now we need to add a knn query to the elastic search
         var knnOuterQuery = new QueryDescriptor<object>().Knn(knn => knn
             .Filter(query)
-            .k(-100)
             .Field("vector")
             .NumCandidates(limit * 2)
             .QueryVector(coll));
