@@ -83,7 +83,6 @@ internal class ElasticSearchHelper
                        {
                            pm.DenseVector("vector", dv => dv.Dims(vectorDimension));
                            pm.Text("payload", pd => pd.Index(false));
-                           //pm.Dynamic("tag_*", dd => dd.)
                        })
                        .DynamicTemplates(GetDynamicTemplates());
                    });
