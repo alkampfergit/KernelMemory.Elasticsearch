@@ -5,7 +5,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests;
 
 public class ElasticSearchHelperTests : BasicElasticTestFixture
 {
-    public ElasticSearchHelperTests(IConfiguration cfg) : base(cfg)
+    public ElasticSearchHelperTests(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
     {
     }
 

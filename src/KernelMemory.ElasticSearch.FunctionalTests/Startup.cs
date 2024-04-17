@@ -1,4 +1,6 @@
-﻿namespace KernelMemory.ElasticSearch.FunctionalTests;
+﻿using Microsoft.Extensions.Logging.Abstractions;
+
+namespace KernelMemory.ElasticSearch.FunctionalTests;
 
 public class Startup
 {
@@ -11,9 +13,19 @@ public class Startup
             .AddEnvironmentVariables()
             .Build();
 
+        hostBuilder.ConfigureServices(services =>
+        {
+            services.AddLogging(logging =>
+            {
+                logging.AddConsole();
+            });
+        });
+
         hostBuilder.ConfigureHostConfiguration(builder => builder.AddConfiguration(Configuration));
 
-        var helper = new ElasticSearchHelper(Configuration.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>()!);
+        var helper = new ElasticSearchHelper(
+            Configuration.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>()!,
+            NullLogger<ElasticSearchHelper>.Instance);
 
         helper.PurgeIndexWithPrefixAsync("testkm", CancellationToken.None).Wait();
         helper.PurgeIndexWithPrefixAsync("kmtest", CancellationToken.None).Wait();

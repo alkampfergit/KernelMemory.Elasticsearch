@@ -99,7 +99,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
 /// </summary>
 public class ElasticSearchQueryHelperTestsFixture : IAsyncLifetime
 {
-    public string? IndexName { get; private set; }
+    public string IndexName { get; private set; } = string.Empty;
 
     public KernelMemoryElasticSearchConfig Config { get; }
 

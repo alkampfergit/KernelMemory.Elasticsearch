@@ -5,7 +5,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests;
 [Trait("Category", "Record")]
 public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
 {
-    public ElasticMemoryRecordRelatedTests(IConfiguration cfg) : base(cfg)
+    public ElasticMemoryRecordRelatedTests(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
     {
     }
 

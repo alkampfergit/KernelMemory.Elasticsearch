@@ -46,7 +46,7 @@ internal class ElasticSearchHelper
 
     internal ElasticSearchQueryHelper QueryHelper { get; }
 
-    internal List<string> CreatedIndices { get; } = new List<string>();
+    internal List<string> CreatedIndices { get; } = new ();
 
     internal async Task EnsureIndexAsync(
         string indexName,
@@ -83,7 +83,6 @@ internal class ElasticSearchHelper
                        {
                            pm.DenseVector("vector", dv => dv.Dims(vectorDimension));
                            pm.Text("payload", pd => pd.Index(false));
-                           //pm.Dynamic("tag_*", dd => dd.)
                        })
                        .DynamicTemplates(GetDynamicTemplates());
                    });
@@ -161,6 +160,7 @@ internal class ElasticSearchHelper
 
     internal async Task<TypeMapping?> GetIndexMappingAsync(string indexName)
     {
+        await _client.Indices.RefreshAsync(indexName);
         var gmr = new GetMappingRequest(indexName);
         var mapping = await _client.Indices.GetMappingAsync(gmr);
         if (!mapping.IsValidResponse)
@@ -179,7 +179,7 @@ internal class ElasticSearchHelper
         var io = ElasticsearchMemoryRecord.ToIndexableObject(
             memoryRecord,
             _kernelMemoryElasticSearchConfig.IndexablePayloadProperties);
-        var ir = new IndexRequest<object>(io, indexName, (string) io["id"]);
+        var ir = new IndexRequest<object>(io, indexName, (string)io["id"]);
         var indexResponse = await _client.IndexAsync<object>(ir, cancellationToken);
 
         if (!indexResponse.IsSuccess())
@@ -189,6 +189,16 @@ internal class ElasticSearchHelper
         }
 
         return true;
+    }
+
+    internal async Task DeleteRecordAsync(string indexName, string id, CancellationToken cancellationToken)
+    {
+        var indexResponse = await _client.DeleteAsync<object>(indexName, id, cancellationToken);
+        if (!indexResponse.IsSuccess())
+        {
+            _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, GetErrorFromElasticResponse(indexResponse));
+            throw new KernelMemoryElasticSearchException($"Failed deleting memory record id {id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
+        }
     }
 
     internal static string GetErrorFromElasticResponse(ElasticsearchResponse elasticsearchResponse)
@@ -232,7 +242,7 @@ internal class ElasticSearchHelper
             return null;
         }
 
-        return (JsonElement) getResponse.Source!;
+        return (JsonElement)getResponse.Source!;
     }
 
     public ElasticSearchQueryHelper GetQueryHelper()
@@ -245,5 +255,10 @@ internal class ElasticSearchHelper
         var gir = new GetIndexRequest(_kernelMemoryElasticSearchConfig.IndexPrefix + "*");
         var list = await _client.Indices.GetAsync(gir, cancellationToken);
         return list.Indices.Keys.Select(k => k.ToString());
+    }
+
+    internal Task RefreshAsync(string indexName)
+    {
+        return _client.Indices.RefreshAsync(indexName);
     }
 }
