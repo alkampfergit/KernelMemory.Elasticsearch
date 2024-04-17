@@ -10,6 +10,7 @@ namespace KernelMemory.ElasticSearch
             {
                 return $"{elasticsearchResponse.ElasticsearchServerError.Error}";
             }
+
             if (elasticsearchResponse.ApiCallDetails?.OriginalException != null)
             {
                 return elasticsearchResponse.ApiCallDetails.OriginalException.ToString();

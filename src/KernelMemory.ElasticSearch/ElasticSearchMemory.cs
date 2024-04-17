@@ -167,6 +167,11 @@ public class ElasticSearchMemory : IMemoryDb
     /// <inheritdoc />
     public async Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(index))
+        {
+            throw new ArgumentException($"'{nameof(index)}' cannot be null or empty.", nameof(index));
+        }
+
         var realIndexName = GetRealIndexName(index);
         await _utils.IndexMemoryRecordAsync(realIndexName, record, cancellationToken);
         return record.Id;

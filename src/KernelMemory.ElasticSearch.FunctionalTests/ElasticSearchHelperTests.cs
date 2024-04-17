@@ -49,7 +49,7 @@ public class ElasticSearchHelperTests : BasicElasticTestFixture
         MemoryRecord mr = GenerateAMemoryRecord();
         string indexName = await CreateIndex(3);
 
-        var indexed = await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
 
         //now we need to verify the mapping
         var mapping = await ElasticSearchHelper.GetIndexMappingAsync(indexName);

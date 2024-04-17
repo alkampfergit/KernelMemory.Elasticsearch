@@ -2,7 +2,6 @@
 using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Transport;
-using Elastic.Transport.Products.Elasticsearch;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory.Diagnostics;
 using Microsoft.KernelMemory.MemoryStorage;
@@ -46,7 +45,7 @@ internal class ElasticSearchHelper
 
     internal ElasticSearchQueryHelper QueryHelper { get; }
 
-    internal List<string> CreatedIndices { get; } = new ();
+    internal List<string> CreatedIndices { get; } = new();
 
     internal async Task EnsureIndexAsync(
         string indexName,
@@ -89,7 +88,7 @@ internal class ElasticSearchHelper
                },
                cancellationToken).ConfigureAwait(false);
 
-            if (!createIdxResponse.IsSuccess())
+            if (!createIdxResponse.IsValidResponse)
             {
                 throw new Exception($"Failed to create index {indexName}");
             }
@@ -174,37 +173,40 @@ internal class ElasticSearchHelper
         return mapping.Indices[indexName].Mappings;
     }
 
-    internal async Task<bool> IndexMemoryRecordAsync(string indexName, MemoryRecord memoryRecord, CancellationToken cancellationToken)
+    internal async Task IndexMemoryRecordAsync(string indexName, MemoryRecord memoryRecord, CancellationToken cancellationToken)
     {
+        var indexExists = await _client.Indices.ExistsAsync(indexName, cancellationToken);
+        if (!indexExists.Exists)
+        {
+            throw new KernelMemoryElasticSearchException($"Index {indexName} does not exists");
+        }
         var io = ElasticsearchMemoryRecord.ToIndexableObject(
             memoryRecord,
             _kernelMemoryElasticSearchConfig.IndexablePayloadProperties);
         var ir = new IndexRequest<object>(io, indexName, (string)io["id"]);
         var indexResponse = await _client.IndexAsync<object>(ir, cancellationToken);
 
-        if (!indexResponse.IsSuccess())
+        if (!indexResponse.IsValidResponse)
         {
             _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", memoryRecord.Id, indexName, indexResponse.GetErrorFromElasticResponse());
-            return false;
+            throw new KernelMemoryElasticSearchException($"Failed Indexing memory record id {memoryRecord.Id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
         }
-
-        return true;
     }
 
     internal async Task DeleteRecordAsync(string indexName, string id, CancellationToken cancellationToken)
     {
         var indexResponse = await _client.DeleteAsync<object>(indexName, id, cancellationToken);
-        if (!indexResponse.IsSuccess())
+        if (!indexResponse.IsValidResponse)
         {
             _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, indexResponse.GetErrorFromElasticResponse());
             throw new KernelMemoryElasticSearchException($"Failed deleting memory record id {id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
         }
     }
 
-    internal async ValueTask DeleteIndexAsync(string indexName, CancellationToken none = default)
+    internal async ValueTask DeleteIndexAsync(string indexName, CancellationToken cancellationToken = default)
     {
-        var deleteResult = await _client.Indices.DeleteAsync(indexName);
-        if (!deleteResult.IsSuccess())
+        var deleteResult = await _client.Indices.DeleteAsync(indexName, cancellationToken);
+        if (!deleteResult.IsValidResponse)
         {
             _logger.LogError("Failed to delete index {indexName} - {error}",
                 indexName,
@@ -219,7 +221,7 @@ internal class ElasticSearchHelper
     {
         var getResponse = await _client.GetAsync<object>(indexName, id, none);
 
-        if (!getResponse.IsSuccess())
+        if (!getResponse.IsValidResponse)
         {
             _logger.LogError("Failed to get object {id} from index {indexName} - {error}",
                 id,

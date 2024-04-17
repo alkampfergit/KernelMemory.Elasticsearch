@@ -27,8 +27,7 @@ public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
         MemoryRecord mr = GenerateAMemoryRecord();
         string indexName = await CreateIndex(3);
 
-        var indexed = await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
-        Assert.True(indexed);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
     }
 
     [Fact]
@@ -37,14 +36,25 @@ public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
         MemoryRecord mr = GenerateAMemoryRecord();
         string indexName = await CreateIndex(3);
 
-        var indexed = await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
 
         var jsonElement = await ElasticSearchHelper.GetAsync(indexName, mr.Id, CancellationToken.None);
 
         Assert.NotNull(jsonElement);
 
         CompareMemoryRecords(mr, ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(jsonElement.Value, true));
+    }
 
-        Assert.True(indexed);
+    [Fact]
+    public void Can_payload_contains_array()
+    {
+        MemoryRecord mr = GenerateAMemoryRecord();
+        mr.Payload.Add("test", new string[] { "alpha", "beta", "gamma" });
+
+        var io = ElasticsearchMemoryRecord.ToIndexableObject(mr, Array.Empty<string>());
+
+        var mrback = ElasticsearchMemoryRecord.MemoryRecordFromIndexableObject(io, true);
+
+        CompareMemoryRecords(mr, mrback);
     }
 }

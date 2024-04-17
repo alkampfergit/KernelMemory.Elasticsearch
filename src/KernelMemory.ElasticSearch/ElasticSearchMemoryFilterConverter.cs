@@ -100,14 +100,6 @@ internal static class ElasticSearchMemoryFilterConverter
         });
     }
 
-    private static TermQuery TagTermQuery(KeyValuePair<string, string> f)
-    {
-        return new TermQuery($"tag_{f.Key}")
-        {
-            Value = f.Value
-        };
-    }
-
     private static MatchQuery TagMatchQuery(KeyValuePair<string, string?> f)
     {
         return new MatchQuery($"tag_{f.Key}")

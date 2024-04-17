@@ -20,12 +20,39 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     }
 
     [Fact]
+    public void Embedding_generator_is_required()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ElasticSearchMemory(_fixture.Config!, null!));
+    }
+
+    [Fact]
+    public async Task Cannot_index_in_null_index()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _sut.UpsertAsync("", _fixture.GenerateAMemoryRecord("a", "B", [1, 2, 3,4f])));
+    }
+
+    [Fact]
+    public async Task When_delete_record_from_not_existing_throws() 
+    {
+        var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
+        await Assert.ThrowsAsync<KernelMemoryElasticSearchException>(async () => await _sut.DeleteAsync("not_exist_index", mr));
+    }
+
+    [Fact]
+    public async Task When_add_record_to_not_existing_index_return_false()
+    {
+        var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
+        await Assert.ThrowsAsync<KernelMemoryElasticSearchException>(async () => await _sut.UpsertAsync("not_exist_index", mr));
+    }
+
+    [Fact]
     public async Task Can_insert_then_delete_memory_record()
     {
         var indexName = "testkm" + RandomNumberGenerator.GetInt32(0, 60000);
         var realIndexName = _fixture.Config.IndexPrefix + indexName;
         try
         {
+            await _sut.CreateIndexAsync(indexName, 4);
             var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
             var id = await _sut.UpsertAsync(indexName, mr);
             Assert.Equal(mr.Id, id);
@@ -82,6 +109,17 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
         }
     }
 
+    [Fact]
+    public async Task Query_with_filter_with_empty_value()
+    {
+        //filter passing both null and empty 
+        MemoryFilter filter = new();
+        filter.ByTag("tag1", ""); //we are filtering with empty value this means that we do not want to filter the tag.
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter], limit: 10, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(4, realResults.Count);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
@@ -106,6 +144,36 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
         var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
         var realResults = await results.ToListAsync();
         Assert.Equal(2, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause_composed()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+        filter2.ByTag("tag1", "black");
+        filter2.ByTag("tag2", "night");
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(2, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause_or_empty()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Single(realResults); //second filter is null so it is filtered out.
     }
 
     [Fact]
@@ -204,7 +272,10 @@ public class ElasticSearchMemoryQueryTestsTestsFixture : IAsyncLifetime
             Payload = new Dictionary<string, object>()
                 {
                     { "text", "hello world" },
-                    {  "blah", "blah ... "}
+                    {  "blah", "blah ... "},
+                    { "num", 1 },
+                    { "bool", true },
+                    { "bool2", false }
                 },
             Tags = new Microsoft.KernelMemory.TagCollection()
             {
