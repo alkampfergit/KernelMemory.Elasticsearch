@@ -9,13 +9,19 @@ public class BasicElasticTestFixture : IAsyncDisposable, IDisposable
 
     public BasicElasticTestFixture(IConfiguration cfg, IServiceProvider serviceProvider)
     {
-        Config = cfg.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>();
-        Config!.IndexablePayloadProperties = ["text"];
+        var config = cfg.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>();
+        if (config == null)
+        {
+            throw new Exception("ElasticSearch config is missing");
+        }
+        Config = config;
+        Config.IndexablePayloadProperties = ["text"];
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         ElasticSearchHelper = new ElasticSearchHelper(Config, loggerFactory.CreateLogger<ElasticSearchHelper>());
     }
 
-    public KernelMemoryElasticSearchConfig? Config { get; }
+    public KernelMemoryElasticSearchConfig Config { get; }
+
     internal ElasticSearchHelper ElasticSearchHelper { get; }
 
     protected async Task<string> CreateIndex(int vectorDimension)

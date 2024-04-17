@@ -15,14 +15,17 @@ public class Startup
 
         hostBuilder.ConfigureServices(services =>
         {
-            services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+            services.AddLogging(logging =>
+            {
+                logging.AddConsole();
+            });
         });
 
         hostBuilder.ConfigureHostConfiguration(builder => builder.AddConfiguration(Configuration));
 
         var helper = new ElasticSearchHelper(
             Configuration.GetSection("KernelMemory:Services:ElasticSearch").Get<KernelMemoryElasticSearchConfig>()!,
-            NullLogger< ElasticSearchHelper>.Instance);
+            NullLogger<ElasticSearchHelper>.Instance);
 
         helper.PurgeIndexWithPrefixAsync("testkm", CancellationToken.None).Wait();
         helper.PurgeIndexWithPrefixAsync("kmtest", CancellationToken.None).Wait();

@@ -63,17 +63,29 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
     {
-        return _utils.GetIndexesNamesAsync(cancellationToken);
+        var rawIndexes = await _utils.GetIndexesNamesAsync(cancellationToken);
+        if (String.IsNullOrEmpty(_config.IndexPrefix))
+        {
+            return rawIndexes;
+        }
+        List<string> realIndexNames = new();
+        foreach (var rawIndex in rawIndexes)
+        {
+            if (rawIndex.StartsWith(_config.IndexPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                realIndexNames.Add(rawIndex.Substring(_config.IndexPrefix.Length));
+            }
+        }
+
+        return realIndexNames.AsReadOnly();
     }
 
     /// <inheritdoc />
     public Task DeleteAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
-        //var collection = this.GetCollectionFromIndexName(index);
-        //return collection.DeleteOneAsync(x => x.Id == record.Id, cancellationToken: cancellationToken);
+        return _utils.DeleteRecordAsync(GetRealIndexName(index), record.Id, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -143,7 +155,7 @@ public class ElasticSearchMemory : IMemoryDb
             {
                 var mr = ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
                 //lets check if we can have cosine similarity direclty returned from the query for now we recalculate
-                yield return (mr, item.Score?? 0);
+                yield return (mr, item.Score ?? 0);
             }
             else
             {
@@ -153,23 +165,11 @@ public class ElasticSearchMemory : IMemoryDb
     }
 
     /// <inheritdoc />
-    public Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
+    public async Task<string> UpsertAsync(string index, MemoryRecord record, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
-        //var normalizedIndexName = NormalizeIndexName(index);
-        //var collection = this.GetCollectionFromIndexName(index);
-        //MongoDbAtlasMemoryRecord mongoRecord = new()
-        //{
-        //    Id = record.Id,
-        //    Index = normalizedIndexName,
-        //    Embedding = record.Vector.Data.ToArray(),
-        //    Tags = record.Tags.Select(x => new MongoDbAtlasMemoryRecord.Tag(x.Key, x.Value.ToArray())).ToList(),
-        //    Payloads = record.Payload.Select(x => new MongoDbAtlasMemoryRecord.Payload(x.Key, x.Value)).ToList()
-        //};
-
-        //await collection.InsertOneAsync(mongoRecord, cancellationToken: cancellationToken).ConfigureAwait(false);
-        //await this.Config.AfterIndexCallbackAsync().ConfigureAwait(false);
-        //return record.Id;
+        var realIndexName = GetRealIndexName(index);
+        await _utils.IndexMemoryRecordAsync(realIndexName, record, cancellationToken);
+        return record.Id;
     }
 
     private static string NormalizeIndexName(string indexName)
@@ -179,7 +179,7 @@ public class ElasticSearchMemory : IMemoryDb
             throw new ArgumentNullException(nameof(indexName), "The index name is empty");
         }
 
-        return indexName.Replace("_", "", StringComparison.OrdinalIgnoreCase);
+        return indexName.Replace("_", "-", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

@@ -1,0 +1,76 @@
+name: BuildAndPublish
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - feature/*
+      - hotfix/*
+      - release/*
+  pull_request: 
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+        ports:
+          - 9800:9200
+        options: --health-cmd="curl http://localhost:9200/_cluster/health" -e "discovery.type=single-node" -e "xpack.security.enabled=false"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup dotnet 3
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.x
+
+      - name: Setup dotnet 8
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 8.x
+
+      - name: Wait for Elasticsearch to be ready
+        shell: pwsh
+        run: |
+          $uri = "http://localhost:9800"
+          $timeoutSeconds = 120
+          $intervalSeconds = 5
+
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+
+          while ($sw.elapsed.totalseconds -lt $timeoutSeconds) {
+              try {
+                  $response = Invoke-WebRequest -Uri $uri -Method Get -ErrorAction Stop
+                  if ($response.StatusCode -eq 200) {
+                      Write-Host "Successfully connected to $uri"
+                      Write-Host "Response content: $($response.Content)"
+                      $sw.Stop()
+                      return
+                  }
+              }
+              catch {
+                  Write-Host "Failed to connect to $uri. Retrying in $intervalSeconds second(s)..."
+                  Start-Sleep -Seconds $intervalSeconds
+              }
+          }
+
+          $sw.Stop()
+          throw "Could not connect to $uri within $timeoutSeconds second(s)."
+
+      - name: build and publish
+        shell: pwsh
+        run: |
+          ./build.ps1 -nugetPublish $true -nugetApiKey ${{ secrets.NUGET_API_KEY }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: nuget-packages
+          path: artifacts/NuGet

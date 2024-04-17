@@ -20,6 +20,47 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
         _sut = new ElasticSearchMemory(_fixture.Config!, _embeddingGenerator);
     }
 
+    [Fact]
+    public async Task Can_insert_then_delete_memory_record()
+    {
+        var indexName = "testkm" + RandomNumberGenerator.GetInt32(0, 60000);
+        var realIndexName = _fixture.Config.IndexPrefix + indexName;
+        try
+        {
+            var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
+            var id = await _sut.UpsertAsync(indexName, mr);
+            Assert.Equal(mr.Id, id);
+
+            //search index and verify the record
+            await _fixture.ElasticSearchHelper.RefreshAsync(realIndexName);
+
+            var results = _sut.GetListAsync(indexName, filters: null, limit: 1, withEmbeddings: true);
+            var realResults = await results.ToListAsync();
+            Assert.Single(realResults);
+            Assert.Equal(mr.Id, realResults.Single().Id);
+
+            //now delete the record and verify index is empty
+            await _sut.DeleteAsync(indexName, mr);
+            await _fixture.ElasticSearchHelper.RefreshAsync(realIndexName);
+
+            results = _sut.GetListAsync(indexName, filters: null, limit: 1, withEmbeddings: true);
+            realResults = await results.ToListAsync();
+            Assert.Empty(realResults);
+        }
+        finally
+        {
+            await _fixture.ElasticSearchHelper.DeleteIndexAsync(realIndexName);
+        }
+    }
+
+    [Fact]
+    public async Task Search_in_non_existing_index_should_return_null()
+    {
+        var results = _sut.GetListAsync("index_does_not_exists_", filters: null, limit: 1, withEmbeddings: true);
+        var realResults = await results.ToListAsync();
+        Assert.Empty(realResults);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -106,7 +147,7 @@ public class ElasticSearchMemoryQueryTestsTestsFixture : IAsyncLifetime
         await ElasticSearchHelper.IndexMemoryRecordAsync(realIndexName, GenerateAMemoryRecord("black", "day", [1.0f, -0.4f, 4.0f, -4.0f]), CancellationToken.None);
     }
 
-    protected MemoryRecord GenerateAMemoryRecord(
+    internal MemoryRecord GenerateAMemoryRecord(
         string tag1,
         string tag2,
         float[] vector)

@@ -13,7 +13,7 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     # services:
     #   elasticsearch:
     #     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
@@ -109,8 +109,4 @@ jobs:
           
           ./build.ps1
           
-          # dotnet restore "src/KernelMemory.ElasticSearch.sln"
-          # dotnet build "src/KernelMemory.ElasticSearch.sln" --no-restore --configuration debug
-          # # dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
-          # dotnet test "src/KernelMemory.ElasticSearch.FunctionalTests/KernelMemory.ElasticSearch.FunctionalTests.csproj" --no-build
           dotnet tool run dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
