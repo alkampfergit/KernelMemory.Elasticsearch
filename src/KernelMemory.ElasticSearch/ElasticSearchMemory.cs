@@ -1,6 +1,6 @@
 ﻿using Elastic.Clients.Elasticsearch.QueryDsl;
-using KernelMemory.ElasticSearch;
 using Microsoft.Extensions.Logging;
+using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.AI;
 using Microsoft.KernelMemory.Diagnostics;
 using Microsoft.KernelMemory.MemoryStorage;
@@ -11,7 +11,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.KernelMemory.MongoDbAtlas;
+namespace KernelMemory.ElasticSearch;
 
 /// <summary>
 /// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
@@ -35,29 +35,29 @@ public class ElasticSearchMemory : IMemoryDb
         ITextEmbeddingGenerator embeddingGenerator,
         ILogger<ElasticSearchMemory>? log = null)
     {
-        this._embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
-        this._log = log ?? DefaultLogger<ElasticSearchMemory>.Instance;
-        this._config = config;
-        this._utils = new ElasticSearchHelper(this._config);
+        _embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
+        _log = log ?? DefaultLogger<ElasticSearchMemory>.Instance;
+        _config = config;
+        _utils = new ElasticSearchHelper(_config);
     }
 
     /// <inheritdoc />
     public Task CreateIndexAsync(string index, int vectorSize, CancellationToken cancellationToken = default)
     {
         string normalized = GetRealIndexName(index);
-        return this._utils.EnsureIndexAsync(normalized, vectorSize, cancellationToken);
+        return _utils.EnsureIndexAsync(normalized, vectorSize, cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task DeleteIndexAsync(string index, CancellationToken cancellationToken = default)
     {
         string normalized = GetRealIndexName(index);
-        await this._utils.DeleteIndexAsync(normalized, cancellationToken);
+        await _utils.DeleteIndexAsync(normalized, cancellationToken);
     }
 
     private string GetRealIndexName(string index)
     {
-        var indexName = $"{this._config.IndexPrefix}{index}";
+        var indexName = $"{_config.IndexPrefix}{index}";
         var normalized = NormalizeIndexName(indexName);
         return normalized;
     }
@@ -66,7 +66,7 @@ public class ElasticSearchMemory : IMemoryDb
     public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
     {
         var rawIndexes = await _utils.GetIndexesNamesAsync(cancellationToken);
-        if (String.IsNullOrEmpty(_config.IndexPrefix))
+        if (string.IsNullOrEmpty(_config.IndexPrefix))
         {
             return rawIndexes;
         }
@@ -136,7 +136,7 @@ public class ElasticSearchMemory : IMemoryDb
             limit = 10;
         }
 
-        Embedding qembed = await this._embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
+        Embedding qembed = await _embeddingGenerator.GenerateEmbeddingAsync(text, cancellationToken).ConfigureAwait(false);
         var coll = qembed.Data.ToArray();
 
         //ok now we need to add a knn query to the elastic search
@@ -180,30 +180,5 @@ public class ElasticSearchMemory : IMemoryDb
         }
 
         return indexName.Replace("_", "-", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Due to different score system of MongoDB Atlas that normalized cosine
-    /// we need to manually recompute the cosine similarity distance manually
-    /// for each vector to have a real cosine similarity distance returned.
-    /// </summary>
-    private static double CosineSim(Embedding vec1, float[] vec2)
-    {
-        var v1 = vec1.Data.ToArray();
-        var v2 = vec2;
-
-        int size = vec1.Length;
-        double dot = 0.0d;
-        double m1 = 0.0d;
-        double m2 = 0.0d;
-        for (int n = 0; n < size; n++)
-        {
-            dot += v1[n] * v2[n];
-            m1 += Math.Pow(v1[n], 2);
-            m2 += Math.Pow(v2[n], 2);
-        }
-
-        double cosineSimilarity = dot / (Math.Sqrt(m1) * Math.Sqrt(m2));
-        return cosineSimilarity;
     }
 }

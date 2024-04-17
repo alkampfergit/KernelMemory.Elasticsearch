@@ -41,7 +41,7 @@ internal class ElasticSearchHelper
         }
         _client = new ElasticsearchClient(settings);
 
-        QueryHelper = new ElasticSearchQueryHelper(_client, _kernelMemoryElasticSearchConfig, _logger);
+        QueryHelper = new ElasticSearchQueryHelper(_client, _logger);
     }
 
     internal ElasticSearchQueryHelper QueryHelper { get; }
@@ -167,7 +167,7 @@ internal class ElasticSearchHelper
         {
             _logger.LogError("Failed retrieve mapping for index {indexName} - {error}",
                 indexName,
-                GetErrorFromElasticResponse(mapping));
+                mapping.GetErrorFromElasticResponse());
             return null;
         }
 
@@ -184,7 +184,7 @@ internal class ElasticSearchHelper
 
         if (!indexResponse.IsSuccess())
         {
-            _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", memoryRecord.Id, indexName, GetErrorFromElasticResponse(indexResponse));
+            _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", memoryRecord.Id, indexName, indexResponse.GetErrorFromElasticResponse());
             return false;
         }
 
@@ -196,23 +196,9 @@ internal class ElasticSearchHelper
         var indexResponse = await _client.DeleteAsync<object>(indexName, id, cancellationToken);
         if (!indexResponse.IsSuccess())
         {
-            _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, GetErrorFromElasticResponse(indexResponse));
+            _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, indexResponse.GetErrorFromElasticResponse());
             throw new KernelMemoryElasticSearchException($"Failed deleting memory record id {id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
         }
-    }
-
-    internal static string GetErrorFromElasticResponse(ElasticsearchResponse elasticsearchResponse)
-    {
-        if (elasticsearchResponse.ElasticsearchServerError != null)
-        {
-            return $"{elasticsearchResponse.ElasticsearchServerError.Error}";
-        }
-        if (elasticsearchResponse.ApiCallDetails?.OriginalException != null)
-        {
-            return elasticsearchResponse.ApiCallDetails.OriginalException.ToString();
-        }
-
-        return "Generic error";
     }
 
     internal async ValueTask DeleteIndexAsync(string indexName, CancellationToken none = default)
@@ -222,7 +208,7 @@ internal class ElasticSearchHelper
         {
             _logger.LogError("Failed to delete index {indexName} - {error}",
                 indexName,
-                GetErrorFromElasticResponse(deleteResult));
+                deleteResult.GetErrorFromElasticResponse());
         }
     }
 
@@ -238,7 +224,7 @@ internal class ElasticSearchHelper
             _logger.LogError("Failed to get object {id} from index {indexName} - {error}",
                 id,
                 indexName,
-                GetErrorFromElasticResponse(getResponse));
+                getResponse.GetErrorFromElasticResponse());
             return null;
         }
 
@@ -247,7 +233,7 @@ internal class ElasticSearchHelper
 
     public ElasticSearchQueryHelper GetQueryHelper()
     {
-        return new ElasticSearchQueryHelper(_client, _kernelMemoryElasticSearchConfig, _logger);
+        return new ElasticSearchQueryHelper(_client, _logger);
     }
 
     internal async Task<IEnumerable<string>> GetIndexesNamesAsync(CancellationToken cancellationToken)

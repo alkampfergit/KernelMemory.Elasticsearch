@@ -1,7 +1,6 @@
 ﻿using KernelMemory.ElasticSearch.FunctionalTests.Doubles;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryStorage;
-using Microsoft.KernelMemory.MongoDbAtlas;
 using System.Security.Cryptography;
 
 namespace KernelMemory.ElasticSearch.FunctionalTests;
@@ -62,11 +61,15 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CanQueryEmptyClause(bool withEmbeddings)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task CanQueryEmptyClause(bool withEmbeddings, bool nullFilter)
     {
-        var results = _sut.GetListAsync(_fixture.IndexName, filters: null, limit: 1, withEmbeddings: withEmbeddings);
+        //filter passing both null and empty 
+        MemoryFilter[]? filter = nullFilter ? null : Array.Empty<MemoryFilter>();
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: filter, limit: 1, withEmbeddings: withEmbeddings);
         var realResults = await results.ToListAsync();
         Assert.Single(realResults);
         if (withEmbeddings)
@@ -77,6 +80,47 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
         {
             Assert.Equal(0, realResults.Single().Vector.Length);
         }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Tolerate_invalid_limit(int limit)
+    {
+        //filter passing both null and empty 
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [], limit: limit, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(4, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+        filter2.ByTag("tag2", "night");
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(2, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_or()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "black");
+        filter1.ByTag("tag2", "night");
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Single(realResults);
+
+        var singleResult = realResults.Single();
+        Assert.Equal("black", singleResult.Tags["tag1"].Single());
+        Assert.Equal("night", singleResult.Tags["tag2"].Single());
     }
 
     /// <summary>
