@@ -6,6 +6,7 @@ using Microsoft.KernelMemory.Diagnostics;
 using Microsoft.KernelMemory.MemoryStorage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -16,7 +17,7 @@ namespace KernelMemory.ElasticSearch;
 /// <summary>
 /// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
 /// </summary>
-public class ElasticSearchMemory : IMemoryDb
+public class ElasticSearchMemory : IMemoryDb, IAdvancedMemoryDb
 {
     private readonly ITextEmbeddingGenerator _embeddingGenerator;
     private readonly ILogger<ElasticSearchMemory> _log;
@@ -156,6 +157,62 @@ public class ElasticSearchMemory : IMemoryDb
                 var mr = ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
                 //lets check if we can have cosine similarity direclty returned from the query for now we recalculate
                 yield return (mr, item.Score ?? 0);
+            }
+            else
+            {
+                _log.LogError("Received an answer from elastic where item.Source is not a JsonElement but is {type}", item.Source?.GetType()?.FullName ?? "null");
+            }
+        }
+    }
+
+    public async IAsyncEnumerable<MemoryRecord> SearchKeywordAsync(
+        string index,
+        string query,
+        ICollection<MemoryFilter>? filters = null,
+        int limit = 1,
+        bool withEmbeddings = false,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (_config.IndexablePayloadProperties == null || _config.IndexablePayloadProperties.Length == 0)
+        {
+            yield break;
+        }
+
+        //Start creating a query with memory filter.
+        var filterQuery = ElasticSearchMemoryFilterConverter.CreateQueryFromMemoryFilter(filters);
+
+        if (limit <= 0)
+        {
+            limit = 10;
+        }
+
+        //we need to do a full text search, combined with the original query from the filter.
+
+        //ok now we need to add a knn query to the elastic search
+        var matchFields = _config.IndexablePayloadProperties.Select(f => $"txt_{f}").ToArray();
+        var outerQuery = Query.Bool(new BoolQuery() 
+        {
+            Must = new Query[]
+            {
+                Query.MultiMatch(new MultiMatchQuery()
+                {
+                    Fields = matchFields,
+                    Query = query
+                }),
+                filterQuery
+            }
+        });
+
+        var resp = await _utils.QueryHelper.ExecuteQueryAsync(GetRealIndexName(index), limit, outerQuery, cancellationToken);
+
+        foreach (var item in resp)
+        {
+            //source is a json element
+            if (item.Source is JsonElement je)
+            {
+                var mr = ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(je, withEmbeddings);
+                //lets check if we can have cosine similarity direclty returned from the query for now we recalculate
+                yield return mr;
             }
             else
             {

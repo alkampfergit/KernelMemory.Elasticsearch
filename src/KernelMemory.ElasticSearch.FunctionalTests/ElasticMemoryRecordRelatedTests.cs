@@ -22,6 +22,17 @@ public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
     }
 
     [Fact]
+    public void Verify_indexable_properties_are_indexed_in_txt()
+    {
+        MemoryRecord mr = GenerateAMemoryRecord();
+
+        var esmr = ElasticsearchMemoryRecord.ToIndexableObject(mr, ["text"]);
+
+        Assert.True(esmr.ContainsKey("txt_text"));
+        Assert.Equal(mr.Payload["text"], esmr["txt_text"]);
+    }
+
+    [Fact]
     public async Task Basic_index_memory_record()
     {
         MemoryRecord mr = GenerateAMemoryRecord();

@@ -75,4 +75,31 @@ internal class ElasticSearchQueryHelper
         }
         return resp.Hits;
     }
+
+    public async Task<IReadOnlyCollection<Hit<object>>> ExecuteQueryAsync(
+       string index,
+       int limit,
+       Query queryDescriptor,
+       CancellationToken cancellationToken = default)
+    {
+        await _client.Indices.RefreshAsync(index, cancellationToken);
+        var resp = await _client.SearchAsync<object>(s => s
+           .Index(index)
+           .Query(queryDescriptor)
+           .From(0)
+           .Size(limit),
+            CancellationToken.None);
+
+        //need to return empty if the index does not exists
+        if (!resp.IsValidResponse)
+        {
+            if (resp.ElasticsearchServerError?.Error?.Type == "index_not_found_exception")
+            {
+                return Array.Empty<Hit<object>>();
+            }
+
+            throw new KernelMemoryElasticSearchException($"Error during search: {resp.ElasticsearchServerError?.Error?.Reason}");
+        }
+        return resp.Hits;
+    }
 }

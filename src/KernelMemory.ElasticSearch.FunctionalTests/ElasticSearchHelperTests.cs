@@ -7,6 +7,7 @@ public class ElasticSearchHelperTests : BasicElasticTestFixture
 {
     public ElasticSearchHelperTests(IConfiguration cfg, IServiceProvider serviceProvider) : base(cfg, serviceProvider)
     {
+
     }
 
     [Fact]

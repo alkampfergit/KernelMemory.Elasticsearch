@@ -2,6 +2,7 @@
 using Microsoft.KernelMemory;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace KernelMemory.ElasticSearch;
@@ -34,6 +35,37 @@ internal static class ElasticSearchMemoryFilterConverter
             .ToArray();
 
         return new QueryDescriptor<object>().Bool(new BoolQuery()
+        {
+            Should = convertedFilters
+        });
+    }
+
+    internal static Query CreateQueryFromMemoryFilter(
+        IEnumerable<MemoryFilter>? filters)
+    {
+        //need to get all filters that have conditions
+        var realFilters = filters?
+            .Where(filters => filters.GetFilters().Any(f => !string.IsNullOrEmpty(f.Value)))?
+            .ToList() ?? [];
+
+        if (realFilters.Count == 0)
+        {
+            return Query.MatchAll(new MatchAllQuery());
+        }
+
+        //ok I really have some conditions, we need to build the querydescriptor.
+        if (realFilters.Count == 1)
+        {
+            return ConvertFilterToQuery(realFilters[0]);
+        }
+
+        //ok we have really more than one filter, convert all filter to Query object than finally return 
+        //a composition with OR
+        var convertedFilters = realFilters
+            .Select(ConvertFilterToQuery)
+            .ToArray();
+
+        return Query.Bool(new BoolQuery()
         {
             Should = convertedFilters
         });
