@@ -36,6 +36,7 @@ public static class DependencyInjection
     {
         return services
             .AddSingleton(config)
+            .AddSingleton<IAdvancedMemoryDb, ElasticSearchMemory>()
             .AddSingleton<IMemoryDb, ElasticSearchMemory>();
     }
 }
