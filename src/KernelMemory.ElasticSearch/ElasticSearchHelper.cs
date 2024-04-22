@@ -188,8 +188,9 @@ internal class ElasticSearchHelper
 
         if (!indexResponse.IsValidResponse)
         {
-            _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", memoryRecord.Id, indexName, indexResponse.GetErrorFromElasticResponse());
-            throw new KernelMemoryElasticSearchException($"Failed Indexing memory record id {memoryRecord.Id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
+            var error = indexResponse.GetErrorFromElasticResponse();
+            _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", memoryRecord.Id, indexName, error);
+            throw new KernelMemoryElasticSearchException($"Failed Indexing memory record id {memoryRecord.Id} in index {indexName} - {error}");
         }
     }
 
@@ -198,8 +199,15 @@ internal class ElasticSearchHelper
         var indexResponse = await _client.DeleteAsync<object>(indexName, id, cancellationToken);
         if (!indexResponse.IsValidResponse)
         {
-            _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, indexResponse.GetErrorFromElasticResponse());
-            throw new KernelMemoryElasticSearchException($"Failed deleting memory record id {id} in index {indexName} - {indexResponse.ElasticsearchServerError?.Error}");
+            //need to understand if it is a simple 404 because the record does not exists
+            if (indexResponse.Result == Result.NotFound) 
+            {
+                //we admit not found result, we can try to delete something that is not there
+                return;
+            }
+            var error = indexResponse.GetErrorFromElasticResponse();
+            _logger.LogError("Failed deleting memory record id {id} in index {index} - {error}", id, indexName, error);
+            throw new KernelMemoryElasticSearchException($"Failed deleting memory record id {id} in index {indexName} - {error}");
         }
     }
 

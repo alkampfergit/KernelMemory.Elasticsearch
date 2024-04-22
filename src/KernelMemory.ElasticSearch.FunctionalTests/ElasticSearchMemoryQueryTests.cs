@@ -32,10 +32,18 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     }
 
     [Fact]
-    public async Task When_delete_record_from_not_existing_throws() 
+    public async Task When_delete_record_from_not_existing_throws()
     {
         var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
         await Assert.ThrowsAsync<KernelMemoryElasticSearchException>(async () => await _sut.DeleteAsync("not_exist_index", mr));
+    }
+
+    [Fact]
+    public async Task Can_delete_not_existing_record()
+    {
+        var indexName = "testkm" + RandomNumberGenerator.GetInt32(0, 60000);
+        await _sut.CreateIndexAsync(indexName, 4);
+        await _sut.DeleteAsync(indexName, _fixture.GenerateAMemoryRecord("xyz", "yyy", [1.0f, 2.0f, 3.0f, 4.0f]));
     }
 
     [Fact]
