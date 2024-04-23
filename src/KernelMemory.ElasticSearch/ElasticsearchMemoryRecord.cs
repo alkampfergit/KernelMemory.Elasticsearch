@@ -109,6 +109,12 @@ public static class ElasticsearchMemoryRecord
             return element;
         }
 
+        var converted = ConvertJsonElement(jsonElement);
+        return converted ?? element;
+    }
+
+    private static object? ConvertJsonElement(JsonElement jsonElement)
+    {
         switch (jsonElement.ValueKind)
         {
             case JsonValueKind.String:
@@ -118,9 +124,11 @@ public static class ElasticsearchMemoryRecord
             case JsonValueKind.True:
             case JsonValueKind.False:
                 return jsonElement.GetBoolean();
-                // handle other types as needed
+            case JsonValueKind.Array:
+                return jsonElement.EnumerateArray().Select(ConvertJsonElement).ToList();
+                //    // handle other types as needed
         }
 
-        return element;
+        return null;
     }
 }

@@ -7,6 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KernelMemory.ElasticSearch"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KernelMemory.ElasticSearch.FunctionalTests", "KernelMemory.ElasticSearch.FunctionalTests\KernelMemory.ElasticSearch.FunctionalTests.csproj", "{444C4244-2180-4BBD-AC14-E758812AE88B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GlobalFiles", "GlobalFiles", "{0D5C45F2-8887-4AA8-A1B8-F30DE409436C}"
+	ProjectSection(SolutionItems) = preProject
+		.runsettings = .runsettings
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

@@ -1,5 +1,4 @@
 ﻿using KernelMemory.ElasticSearch.FunctionalTests.Doubles;
-using Microsoft.KernelMemory.MongoDbAtlas;
 
 namespace KernelMemory.ElasticSearch.FunctionalTests
 {
@@ -17,7 +16,7 @@ namespace KernelMemory.ElasticSearch.FunctionalTests
         {
         }
 
-        protected List<string> IndexToDelete = new List<string>();
+        protected List<string> IndexToDelete = new();
 
         public override void Dispose()
         {

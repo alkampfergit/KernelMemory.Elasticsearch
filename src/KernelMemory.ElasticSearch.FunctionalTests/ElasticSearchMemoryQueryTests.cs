@@ -1,7 +1,6 @@
 ﻿using KernelMemory.ElasticSearch.FunctionalTests.Doubles;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryStorage;
-using Microsoft.KernelMemory.MongoDbAtlas;
 using System.Security.Cryptography;
 
 namespace KernelMemory.ElasticSearch.FunctionalTests;
@@ -21,12 +20,47 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     }
 
     [Fact]
+    public void Embedding_generator_is_required()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ElasticSearchMemory(_fixture.Config!, null!));
+    }
+
+    [Fact]
+    public async Task Cannot_index_in_null_index()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _sut.UpsertAsync("", _fixture.GenerateAMemoryRecord("a", "B", [1, 2, 3,4f])));
+    }
+
+    [Fact]
+    public async Task When_delete_record_from_not_existing_throws()
+    {
+        var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
+        await Assert.ThrowsAsync<KernelMemoryElasticSearchException>(async () => await _sut.DeleteAsync("not_exist_index", mr));
+    }
+
+    [Fact]
+    public async Task Can_delete_not_existing_record()
+    {
+        var indexName = "testkm" + RandomNumberGenerator.GetInt32(0, 60000);
+        await _sut.CreateIndexAsync(indexName, 4);
+        await _sut.DeleteAsync(indexName, _fixture.GenerateAMemoryRecord("xyz", "yyy", [1.0f, 2.0f, 3.0f, 4.0f]));
+    }
+
+    [Fact]
+    public async Task When_add_record_to_not_existing_index_return_false()
+    {
+        var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
+        await Assert.ThrowsAsync<KernelMemoryElasticSearchException>(async () => await _sut.UpsertAsync("not_exist_index", mr));
+    }
+
+    [Fact]
     public async Task Can_insert_then_delete_memory_record()
     {
         var indexName = "testkm" + RandomNumberGenerator.GetInt32(0, 60000);
         var realIndexName = _fixture.Config.IndexPrefix + indexName;
         try
         {
+            await _sut.CreateIndexAsync(indexName, 4);
             var mr = _fixture.GenerateAMemoryRecord("tagaaaaa", "Tag_bbbbb", [1.0f, 2.0f, 3.0f, 4.0f]);
             var id = await _sut.UpsertAsync(indexName, mr);
             Assert.Equal(mr.Id, id);
@@ -62,11 +96,15 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CanQueryEmptyClause(bool withEmbeddings)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task CanQueryEmptyClause(bool withEmbeddings, bool nullFilter)
     {
-        var results = _sut.GetListAsync(_fixture.IndexName, filters: null, limit: 1, withEmbeddings: withEmbeddings);
+        //filter passing both null and empty 
+        MemoryFilter[]? filter = nullFilter ? null : Array.Empty<MemoryFilter>();
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: filter, limit: 1, withEmbeddings: withEmbeddings);
         var realResults = await results.ToListAsync();
         Assert.Single(realResults);
         if (withEmbeddings)
@@ -77,6 +115,88 @@ public class ElasticSearchMemoryQueryTests : IClassFixture<ElasticSearchMemoryQu
         {
             Assert.Equal(0, realResults.Single().Vector.Length);
         }
+    }
+
+    [Fact]
+    public async Task Query_with_filter_with_empty_value()
+    {
+        //filter passing both null and empty 
+        MemoryFilter filter = new();
+        filter.ByTag("tag1", ""); //we are filtering with empty value this means that we do not want to filter the tag.
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter], limit: 10, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(4, realResults.Count);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Tolerate_invalid_limit(int limit)
+    {
+        //filter passing both null and empty 
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [], limit: limit, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(4, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+        filter2.ByTag("tag2", "night");
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(2, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause_composed()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+        filter2.ByTag("tag1", "black");
+        filter2.ByTag("tag2", "night");
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Equal(2, realResults.Count);
+    }
+
+    [Fact]
+    public async Task CanQuery_with_multiple_clause_or_empty()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "Red");
+
+        MemoryFilter filter2 = new();
+
+        //this is an or composition
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1, filter2], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Single(realResults); //second filter is null so it is filtered out.
+    }
+
+    [Fact]
+    public async Task CanQuery_with_or()
+    {
+        MemoryFilter filter1 = new();
+        filter1.ByTag("tag1", "black");
+        filter1.ByTag("tag2", "night");
+        var results = _sut.GetListAsync(_fixture.IndexName, filters: [filter1], limit: 4, withEmbeddings: false);
+        var realResults = await results.ToListAsync();
+        Assert.Single(realResults);
+
+        var singleResult = realResults.Single();
+        Assert.Equal("black", singleResult.Tags["tag1"].Single());
+        Assert.Equal("night", singleResult.Tags["tag2"].Single());
     }
 
     /// <summary>
@@ -160,7 +280,10 @@ public class ElasticSearchMemoryQueryTestsTestsFixture : IAsyncLifetime
             Payload = new Dictionary<string, object>()
                 {
                     { "text", "hello world" },
-                    {  "blah", "blah ... "}
+                    {  "blah", "blah ... "},
+                    { "num", 1 },
+                    { "bool", true },
+                    { "bool2", false }
                 },
             Tags = new Microsoft.KernelMemory.TagCollection()
             {

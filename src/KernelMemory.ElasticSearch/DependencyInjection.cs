@@ -1,9 +1,8 @@
-﻿using KernelMemory.ElasticSearch;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryStorage;
-using Microsoft.KernelMemory.MongoDbAtlas;
 
-namespace Microsoft.KernelMemory;
+namespace KernelMemory.ElasticSearch;
 
 public static class KernelMemoryBuilderExtensions
 {
@@ -37,6 +36,7 @@ public static class DependencyInjection
     {
         return services
             .AddSingleton(config)
+            .AddSingleton<IAdvancedMemoryDb, ElasticSearchMemory>()
             .AddSingleton<IMemoryDb, ElasticSearchMemory>();
     }
 }

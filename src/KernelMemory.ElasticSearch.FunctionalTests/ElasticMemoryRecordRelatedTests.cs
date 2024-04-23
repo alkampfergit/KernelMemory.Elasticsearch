@@ -22,13 +22,23 @@ public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
     }
 
     [Fact]
+    public void Verify_indexable_properties_are_indexed_in_txt()
+    {
+        MemoryRecord mr = GenerateAMemoryRecord();
+
+        var esmr = ElasticsearchMemoryRecord.ToIndexableObject(mr, ["text"]);
+
+        Assert.True(esmr.ContainsKey("txt_text"));
+        Assert.Equal(mr.Payload["text"], esmr["txt_text"]);
+    }
+
+    [Fact]
     public async Task Basic_index_memory_record()
     {
         MemoryRecord mr = GenerateAMemoryRecord();
         string indexName = await CreateIndex(3);
 
-        var indexed = await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
-        Assert.True(indexed);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
     }
 
     [Fact]
@@ -37,14 +47,25 @@ public class ElasticMemoryRecordRelatedTests : BasicElasticTestFixture
         MemoryRecord mr = GenerateAMemoryRecord();
         string indexName = await CreateIndex(3);
 
-        var indexed = await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(indexName, mr, CancellationToken.None);
 
         var jsonElement = await ElasticSearchHelper.GetAsync(indexName, mr.Id, CancellationToken.None);
 
         Assert.NotNull(jsonElement);
 
         CompareMemoryRecords(mr, ElasticsearchMemoryRecord.MemoryRecordFromJsonElement(jsonElement.Value, true));
+    }
 
-        Assert.True(indexed);
+    [Fact]
+    public void Can_payload_contains_array()
+    {
+        MemoryRecord mr = GenerateAMemoryRecord();
+        mr.Payload.Add("test", new string[] { "alpha", "beta", "gamma" });
+
+        var io = ElasticsearchMemoryRecord.ToIndexableObject(mr, Array.Empty<string>());
+
+        var mrback = ElasticsearchMemoryRecord.MemoryRecordFromIndexableObject(io, true);
+
+        CompareMemoryRecords(mr, mrback);
     }
 }
