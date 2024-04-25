@@ -8,7 +8,7 @@ This library implements only the Memory DB part, so you still need to configure 
 
 Package is published in Nuget [Alkampfer.KernelMemory.ElasticSearch](https://www.nuget.org/packages/Alkampfer.KernelMemory.ElasticSearch/)
 
-![NuGet Version](https://img.shields.io/nuget/v/Alkampfer.KernelMemory.ElasticSearch) ![NuGet Downloads](https://img.shields.io/nuget/dt/Alkampfer.KernelMemory.ElasticSearch?style=flat)
+[![NuGet Version](https://img.shields.io/nuget/v/Alkampfer.KernelMemory.ElasticSearch)](https://www.nuget.org/packages/Alkampfer.KernelMemory.ElasticSearch/) [![NuGet Downloads](https://img.shields.io/nuget/dt/Alkampfer.KernelMemory.ElasticSearch?style=flat)](https://www.nuget.org/stats/packages/Alkampfer.KernelMemory.ElasticSearch?groupby=Version)
 
 ## Details of implementation
 
