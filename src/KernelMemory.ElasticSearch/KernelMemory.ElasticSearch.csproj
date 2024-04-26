@@ -38,6 +38,7 @@
     <Company>Your Company</Company>
     <Copyright>Your Copyright</Copyright>
     <Version>1.0.0</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/alkampfergit/KernelMemory.Elasticsearch</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
