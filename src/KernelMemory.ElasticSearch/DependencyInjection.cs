@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using KernelMemory.Extensions.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryStorage;
 
@@ -36,7 +37,7 @@ public static class DependencyInjection
     {
         return services
             .AddSingleton(config)
-            .AddSingleton<IAdvancedMemoryDb, ElasticSearchMemory>()
+            .AddSingleton<IKernelMemoryExtensionMemoryDb, ElasticSearchMemory>()
             .AddSingleton<IMemoryDb, ElasticSearchMemory>();
     }
 }
