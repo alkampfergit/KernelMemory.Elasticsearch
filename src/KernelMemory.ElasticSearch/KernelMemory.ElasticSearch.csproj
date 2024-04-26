@@ -12,8 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.13.6" />
-    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.36.240415.1" />
+    <PackageReference Include="Alkampfer.KernelMemory.Extensions.Interfaces" Version="0.4.0-configuration0014" />
+    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.13.10" />
+    <PackageReference Include="Microsoft.KernelMemory.Abstractions" Version="0.38.240424.2" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

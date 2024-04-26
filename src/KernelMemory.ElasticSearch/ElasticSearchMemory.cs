@@ -1,4 +1,5 @@
 ﻿using Elastic.Clients.Elasticsearch.QueryDsl;
+using KernelMemory.Extensions.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.AI;
@@ -17,7 +18,7 @@ namespace KernelMemory.ElasticSearch;
 /// <summary>
 /// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
 /// </summary>
-public class ElasticSearchMemory : IMemoryDb, IAdvancedMemoryDb
+public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb
 {
     private readonly ITextEmbeddingGenerator _embeddingGenerator;
     private readonly ILogger<ElasticSearchMemory> _log;
