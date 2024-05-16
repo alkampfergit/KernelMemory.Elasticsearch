@@ -66,7 +66,7 @@ public class BasicElasticTestFixture : IAsyncDisposable, IDisposable
         Assert.Equal(mr.Tags, rmr.Tags);
     }
 
-    protected static MemoryRecord GenerateAMemoryRecord()
+    protected static MemoryRecord GenerateAMemoryRecord(string documentId = null)
     {
         return new MemoryRecord()
         {
@@ -81,6 +81,7 @@ public class BasicElasticTestFixture : IAsyncDisposable, IDisposable
             {
                 ["tag1"] = new List<string?>() { "value1" },
                 ["tag2"] = new List<string?>() { "value2" },
+                ["__document_id"] =  new List<string?>() { documentId },
             }
         };
     }

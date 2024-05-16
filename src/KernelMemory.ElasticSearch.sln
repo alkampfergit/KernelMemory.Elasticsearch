@@ -10,6 +10,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GlobalFiles", "GlobalFiles", "{0D5C45F2-8887-4AA8-A1B8-F30DE409436C}"
 	ProjectSection(SolutionItems) = preProject
 		.runsettings = .runsettings
+		..\Directory.Packages.props = ..\Directory.Packages.props
 	EndProjectSection
 EndProject
 Global

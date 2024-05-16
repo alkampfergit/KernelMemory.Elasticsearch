@@ -1,8 +1,11 @@
 ﻿using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Core.Bulk;
 using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
 using Microsoft.Extensions.Logging;
+using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.Diagnostics;
 using Microsoft.KernelMemory.MemoryStorage;
 using System;
@@ -194,13 +197,56 @@ internal class ElasticSearchHelper
         }
     }
 
+    internal async Task BulkIndexMemoryRecordAsync(string indexName, IEnumerable<MemoryRecord> memoryRecords, CancellationToken cancellationToken)
+    {
+        var indexExists = await _client.Indices.ExistsAsync(indexName, cancellationToken);
+        if (!indexExists.Exists)
+        {
+            throw new KernelMemoryElasticSearchException($"Index {indexName} does not exists");
+        }
+
+        var bulkRequest = new BulkRequest(indexName);
+        bulkRequest.Operations = new BulkOperationsCollection();
+
+        foreach (var memoryRecord in memoryRecords)
+        {
+            var io = ElasticsearchMemoryRecord.ToIndexableObject(
+                memoryRecord,
+                _kernelMemoryElasticSearchConfig.IndexablePayloadProperties
+            );
+
+            var indexRequest = new BulkIndexOperation<object>(io)
+            {
+                Id = (string)io["id"]
+            };
+
+            bulkRequest.Operations.Add(indexRequest);
+        }
+
+        var bulkResponse = await _client.BulkAsync(bulkRequest, cancellationToken);
+
+        if (bulkResponse.Errors)
+        {
+            foreach (var itemWithError in bulkResponse.ItemsWithErrors)
+            {
+                if (itemWithError.Error == null)
+                {
+                    continue;
+                }
+                var error = itemWithError.Error.Reason;
+                _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", itemWithError.Id, indexName, error);
+            }
+            throw new KernelMemoryElasticSearchException($"Failed Bulk Indexing memory records in index {indexName}");
+        }
+    }
+
     internal async Task DeleteRecordAsync(string indexName, string id, CancellationToken cancellationToken)
     {
         var indexResponse = await _client.DeleteAsync<object>(indexName, id, cancellationToken);
         if (!indexResponse.IsValidResponse)
         {
             //need to understand if it is a simple 404 because the record does not exists
-            if (indexResponse.Result == Result.NotFound) 
+            if (indexResponse.Result == Result.NotFound)
             {
                 //we admit not found result, we can try to delete something that is not there
                 return;
@@ -256,5 +302,31 @@ internal class ElasticSearchHelper
     internal Task RefreshAsync(string indexName)
     {
         return _client.Indices.RefreshAsync(indexName);
+    }
+
+    internal async Task DeleteByDocumentIdAsync(string indexName, string documentId, CancellationToken cancellationToken)
+    {
+        var indexExists = await _client.Indices.ExistsAsync(indexName, cancellationToken);
+        if (!indexExists.Exists)
+        {
+            throw new KernelMemoryElasticSearchException($"Index {indexName} does not exist");
+        }
+
+        var deleteByQueryRequest = new DeleteByQueryRequest(indexName)
+        {
+            Query = new TermQuery(new Field($"tag_{Constants.ReservedDocumentIdTag}.keyword"))
+            {
+                Value = documentId
+            }
+        };
+
+        var deleteByQueryResponse = await _client.DeleteByQueryAsync(deleteByQueryRequest, cancellationToken);
+
+        if (!deleteByQueryResponse.IsValidResponse)
+        {
+            var error = deleteByQueryResponse.GetErrorFromElasticResponse();
+            _logger.LogError("Failed deleting documents with documentId {documentId} in index {index} - {error}", documentId, indexName, error);
+            throw new KernelMemoryElasticSearchException($"Failed deleting documents with documentId {documentId} in index {indexName} - {error}");
+        }
     }
 }
