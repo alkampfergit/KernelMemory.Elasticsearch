@@ -11,6 +11,7 @@ using Microsoft.KernelMemory.MemoryStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -227,6 +228,7 @@ internal class ElasticSearchHelper
 
         if (bulkResponse.Errors)
         {
+            StringBuilder errors = new ();
             foreach (var itemWithError in bulkResponse.ItemsWithErrors)
             {
                 if (itemWithError.Error == null)
@@ -234,9 +236,10 @@ internal class ElasticSearchHelper
                     continue;
                 }
                 var error = itemWithError.Error.Reason;
+                errors.Append($"Failed Indexing memory record id {itemWithError.Id} in index {indexName} - {error}");
                 _logger.LogError("Failed Indexing memory record id {id} in index {index} - {error}", itemWithError.Id, indexName, error);
             }
-            throw new KernelMemoryElasticSearchException($"Failed Bulk Indexing memory records in index {indexName}");
+            throw new KernelMemoryElasticSearchException($"Failed Bulk Indexing memory records in index {indexName} - Cumulate errors: {errors}");
         }
     }
 
