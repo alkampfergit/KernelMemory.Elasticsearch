@@ -191,7 +191,7 @@ public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb, IB
 
         //ok now we need to add a knn query to the elastic search
         var matchFields = _config.IndexablePayloadProperties.Select(f => $"txt_{f}").ToArray();
-        var outerQuery = Query.Bool(new BoolQuery() 
+        var outerQuery = Query.Bool(new BoolQuery()
         {
             Must = new Query[]
             {
@@ -257,7 +257,7 @@ public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb, IB
 
     public async IAsyncEnumerable<string> BatchUpsertAsync(
         string index,
-        IEnumerable<MemoryRecord> records, 
+        IEnumerable<MemoryRecord> records,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(index))

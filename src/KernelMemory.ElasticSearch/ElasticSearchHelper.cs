@@ -105,15 +105,12 @@ internal class ElasticSearchHelper
     {
         var dt = new List<IDictionary<string, DynamicTemplate>>();
         var tags = new Dictionary<string, DynamicTemplate>();
-        tags["tags"] = new DynamicTemplate
+        var tagProperty = new TextProperty
         {
-            Match = "tag_*",
-            Mapping = new TextProperty
-            {
-                Analyzer = "standard",
-                Index = true,
-                Store = true,
-                Fields = new Properties() {
+            Analyzer = "standard",
+            Index = true,
+            Store = true,
+            Fields = new Properties() {
                     { "keyword", new KeywordProperty() },
                     { "na", new TextProperty()
                         {
@@ -126,27 +123,29 @@ internal class ElasticSearchHelper
                         }
                     }
                 }
-            },
         };
+        var template = DynamicTemplate.Mapping(tagProperty);
+        template.Match = new List<string>() { "tag_*" };
+        tags["tags"] = template;
         dt.Add(tags);
 
         var txtProp = new Dictionary<string, DynamicTemplate>();
-        txtProp["txt"] = new DynamicTemplate
+        var txtProperty = new TextProperty
         {
-            Match = "txt_*",
-            Mapping = new TextProperty
-            {
-                Analyzer = "standard",
-                Index = true,
-                Store = true,
-                Fields = new Properties() {
+            Analyzer = "standard",
+            Index = true,
+            Store = true,
+            Fields = new Properties() {
                     { "keyword", new KeywordProperty() },
                     { "english", new TextProperty() {
                         Analyzer = "english"
                     } }
                 }
-            },
         };
+        var txtTemplate = DynamicTemplate.Mapping(txtProperty);
+        txtTemplate.Match = new List<string>() { "txt_*" };
+
+        txtProp["txt"] = txtTemplate;
         dt.Add(txtProp);
         return dt;
     }
