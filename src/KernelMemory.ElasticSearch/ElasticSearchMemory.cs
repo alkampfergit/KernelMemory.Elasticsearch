@@ -18,7 +18,7 @@ namespace KernelMemory.ElasticSearch;
 /// <summary>
 /// Implementation of <see cref="IMemoryDb"/> based on MongoDB Atlas.
 /// </summary>
-public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb
+public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb, IBulkMemoryDb, IMemoryDbBatchUpsert
 {
     private readonly ITextEmbeddingGenerator _embeddingGenerator;
     private readonly ILogger<ElasticSearchMemory> _log;
@@ -234,6 +234,55 @@ public class ElasticSearchMemory : IMemoryDb, IKernelMemoryExtensionMemoryDb
         await _utils.IndexMemoryRecordAsync(realIndexName, record, cancellationToken);
         return record.Id;
     }
+
+    #region Bulk
+
+    public async Task<IReadOnlyCollection<string>> UpsertManyAsync(
+        string index,
+        IEnumerable<MemoryRecord> records,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(index))
+        {
+            throw new ArgumentException($"'{nameof(index)}' cannot be null or empty.", nameof(index));
+        }
+
+        ArgumentNullException.ThrowIfNull(records);
+
+        //now I need to bulk insert
+        await _utils.BulkIndexMemoryRecordAsync(GetRealIndexName(index), records, cancellationToken);
+
+        return records.Select(r => r.Id).ToArray();
+    }
+
+    public async IAsyncEnumerable<string> BatchUpsertAsync(
+        string index,
+        IEnumerable<MemoryRecord> records, 
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(index))
+        {
+            throw new ArgumentException($"'{nameof(index)}' cannot be null or empty.", nameof(index));
+        }
+
+        ArgumentNullException.ThrowIfNull(records);
+
+        //now I need to bulk insert
+        await _utils.BulkIndexMemoryRecordAsync(GetRealIndexName(index), records, cancellationToken);
+
+        foreach (var item in records)
+        {
+            yield return item.Id;
+        }
+    }
+
+    public async Task<IReadOnlyCollection<string>> ReplaceDocumentAsync(string index, string documentId, IEnumerable<MemoryRecord> record, CancellationToken cancellationToken = default)
+    {
+        await _utils.DeleteByDocumentIdAsync(GetRealIndexName(index), documentId, cancellationToken);
+        return await UpsertManyAsync(index, record, cancellationToken);
+    }
+
+    #endregion
 
     private static string NormalizeIndexName(string indexName)
     {

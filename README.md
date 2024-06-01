@@ -4,6 +4,12 @@ In this project there is an opinionated implementation of IMemoryDb for [Microso
 
 This library implements only the Memory DB part, so you still need to configure a different database for Binary Storage in Kernel Memory.
 
+## Nuget
+
+Package is published in Nuget [Alkampfer.KernelMemory.ElasticSearch](https://www.nuget.org/packages/Alkampfer.KernelMemory.ElasticSearch/)
+
+[![NuGet Version](https://img.shields.io/nuget/v/Alkampfer.KernelMemory.ElasticSearch)](https://www.nuget.org/packages/Alkampfer.KernelMemory.ElasticSearch/) [![NuGet Downloads](https://img.shields.io/nuget/dt/Alkampfer.KernelMemory.ElasticSearch?style=flat)](https://www.nuget.org/stats/packages/Alkampfer.KernelMemory.ElasticSearch?groupby=Version)
+
 ## Details of implementation
 
 This implementation uses dynamic template mapping so we do not need to do nested object mapping, this was done **to have a better schema of the object and a real simple way to query the data**. 
@@ -11,6 +17,8 @@ This implementation uses dynamic template mapping so we do not need to do nested
 ## Search in payload
 
 Kernel memory uses only tags to filter results, and the MemoryRecord **has payload dictionary that contains non searchable fields**. Actually this implementation was created to allow mixing vector search and BM25 search, so you have a special property called **IndexablePayloadProperties** in the configuration that allows you to specify which payload you want to be indexed and searchable.
+
+You can use that kind of functionality with custom code like that one in [Kernel Memory Extensions](https://github.com/alkampfergit/KernelMemory.Extensions)
 
 ## Developing with ElasticSearch
 
