@@ -115,16 +115,16 @@ internal class ElasticSearchHelper
                 Store = true,
                 Fields = new Properties() {
                     { "keyword", new KeywordProperty() },
-                    { "na", new TextProperty()
-                        {
-                            Analyzer = "nalc"
-                        }
-                    },
-                    { "english", new TextProperty()
-                        {
-                            Analyzer = "english"
-                        }
-                    }
+                    //{ "na", new TextProperty()
+                    //    {
+                    //        Analyzer = "nalc"
+                    //    }
+                    //},
+                    //{ "english", new TextProperty()
+                    //    {
+                    //        Analyzer = "english"
+                    //    }
+                    //}
                 }
             },
         };
@@ -140,10 +140,11 @@ internal class ElasticSearchHelper
                 Index = true,
                 Store = true,
                 Fields = new Properties() {
-                    { "keyword", new KeywordProperty() },
+                    //{ "keyword", new KeywordProperty() },
                     { "english", new TextProperty() {
-                        Analyzer = "english"
-                    } }
+                            Analyzer = "english"
+                        }
+                    }
                 }
             },
         };
@@ -228,7 +229,7 @@ internal class ElasticSearchHelper
 
         if (bulkResponse.Errors)
         {
-            StringBuilder errors = new ();
+            StringBuilder errors = new();
             foreach (var itemWithError in bulkResponse.ItemsWithErrors)
             {
                 if (itemWithError.Error == null)

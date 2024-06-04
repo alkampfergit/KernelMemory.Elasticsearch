@@ -31,11 +31,11 @@ public class ElasticSearchHelperTests : BasicElasticTestFixture
         var tagmapping = (TextProperty?)tagTemplateKey.Mapping;
         Assert.NotNull(tagmapping);
         Assert.Equal("standard", tagmapping.Analyzer);
-        Assert.Equal(3, tagmapping.Fields!.Count());
+        Assert.Single(tagmapping.Fields!);
 
-        var nalcField = (TextProperty?) tagmapping.Fields!["na"];
-        Assert.NotNull(nalcField);
-        Assert.Equal("nalc", nalcField.Analyzer);
+        //var nalcField = (TextProperty?) tagmapping.Fields!["na"];
+        //Assert.NotNull(nalcField);
+        //Assert.Equal("nalc", nalcField.Analyzer);
 
         //verify mapping of the payload properties prefixed with txt
         var txtTemplate = mapping.DynamicTemplates.Single(d => d.Keys.Contains("txt"));
