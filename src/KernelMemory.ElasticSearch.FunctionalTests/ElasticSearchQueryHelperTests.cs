@@ -14,7 +14,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
     }
 
     [Fact]
-    public async void Empty_query_return_all()
+    public async Task Empty_query_return_all()
     {
         //need to apply the condition for query
         var queryHelper = _fixture.ElasticSearchHelper.GetQueryHelper();
@@ -24,7 +24,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
     }
 
     [Fact]
-    public async void No_query_returns_all()
+    public async Task No_query_returns_all()
     {
         //need to apply the condition for query
         var queryHelper = _fixture.ElasticSearchHelper.GetQueryHelper();
@@ -34,7 +34,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
     }
 
     [Fact]
-    public async void Verify_basic_query_with_filter()
+    public async Task Verify_basic_query_with_filter()
     {
         var mf = new MemoryFilter();
         mf.ByTag("tag1", "red");
@@ -50,7 +50,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
     [InlineData("RED")]
     [InlineData("Red")]
     [InlineData("rEd")]
-    public async void Verify_basic_query_with_filter_is_case_insensitive(string color)
+    public async Task Verify_basic_query_with_filter_is_case_insensitive(string color)
     {
         var mf = new MemoryFilter();
         mf.ByTag("tag1", color);
@@ -62,8 +62,37 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
         Assert.Equal(1, results);
     }
 
+    [Theory]
+    [InlineData("RED")]
+    [InlineData("Red")]
+    [InlineData("rEd")]
+    public async Task Verify_not_basic_query_with_filter_is_case_insensitive(string color)
+    {
+        var mf = new ExtendedMemoryFilter();
+        mf.ByNotTag("tag1", color);
+
+        //need to apply the condition for query
+        var queryHelper = _fixture.ElasticSearchHelper.GetQueryHelper();
+        var translatedQuery = ElasticSearchMemoryFilterConverter.CreateQueryDescriptorFromMemoryFilter([mf]);
+        var results = await queryHelper.VerifyQueryAsync(_fixture.IndexName, translatedQuery);
+        Assert.Equal(3, results);
+    }
+
     [Fact]
-    public async void Verify_double_conditions()
+    public async Task Verify_not_with_multiple_value()
+    {
+        var mf = new ExtendedMemoryFilter();
+        mf.ByNotTag("users", "bar");
+
+        //need to apply the condition for query
+        var queryHelper = _fixture.ElasticSearchHelper.GetQueryHelper();
+        var translatedQuery = ElasticSearchMemoryFilterConverter.CreateQueryDescriptorFromMemoryFilter([mf]);
+        var results = await queryHelper.VerifyQueryAsync(_fixture.IndexName, translatedQuery);
+        Assert.Equal(2, results);
+    }
+
+    [Fact]
+    public async Task Verify_double_conditions()
     {
         //this is an and condition, so we need to have both conditions to be true.
         var mf = new MemoryFilter();
@@ -78,7 +107,7 @@ public class ElasticSearchQueryHelperTests : IClassFixture<ElasticSearchQueryHel
     }
 
     [Fact]
-    public async void Verify_or_conditions()
+    public async Task Verify_or_conditions()
     {
         //this is an and condition, so we need to have both conditions to be true.
         var mf = new MemoryFilter();
@@ -121,16 +150,17 @@ public class ElasticSearchQueryHelperTestsFixture : IAsyncLifetime
         IndexName = GetIndexTestName();
         await ElasticSearchHelper.EnsureIndexAsync(IndexName, 3, CancellationToken.None);
         //now we can index some data
-        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("red", "nice", [1.0f, 2.0f, 3.0f]), CancellationToken.None);
-        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("blue", "bad", [1.0f, 0.4f, 4.0f]), CancellationToken.None);
-        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("black", "night", [1.0f, 0.4f, 4.0f]), CancellationToken.None);
-        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("black", "day", [1.0f, 0.4f, 4.0f]), CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("red", "nice", [1.0f, 2.0f, 3.0f], ["foo"]), CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("blue", "bad", [1.0f, 0.4f, 4.0f], ["bar"]), CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("black", "night", [1.0f, 0.4f, 4.0f], []), CancellationToken.None);
+        await ElasticSearchHelper.IndexMemoryRecordAsync(IndexName, GenerateAMemoryRecord("black", "day", [1.0f, 0.4f, 4.0f], ["foo", "bar"]), CancellationToken.None);
     }
 
     protected MemoryRecord GenerateAMemoryRecord(
         string tag1,
         string tag2,
-        float[] vector)
+        float[] vector,
+        List<string?> users)
     {
         TotalRecords++;
         return new MemoryRecord()
@@ -144,8 +174,9 @@ public class ElasticSearchQueryHelperTestsFixture : IAsyncLifetime
                 },
             Tags = new Microsoft.KernelMemory.TagCollection()
             {
-                ["tag1"] = new List<string?>() { tag1 },
-                ["tag2"] = new List<string?>() { tag2 },
+                ["tag1"] = [tag1],
+                ["tag2"] = [tag2],
+                ["users"] = users,
             }
         };
     }
