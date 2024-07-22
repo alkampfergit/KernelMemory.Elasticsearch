@@ -1,4 +1,5 @@
-﻿using Elastic.Clients.Elasticsearch.QueryDsl;
+﻿using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 using Microsoft.KernelMemory;
 using System;
 using System.Collections.Generic;

@@ -25,22 +25,22 @@ public class ElasticSearchHelperTests : BasicElasticTestFixture
         var tagTemplate = mapping.DynamicTemplates.Single(d => d.Keys.Contains("tags"));
         var tagTemplateKey = tagTemplate["tags"];
         Assert.NotNull(tagTemplateKey);
-        Assert.Equal("tag_*", tagTemplateKey.Match);
+        Assert.Equal("tag_*", tagTemplateKey.Match!.First());
 
-        var tagmapping = (TextProperty?)tagTemplateKey.Mapping;
+        Assert.True(tagTemplateKey.TryGet<TextProperty>(out var tagmapping));
+
         Assert.NotNull(tagmapping);
         Assert.Equal("standard", tagmapping.Analyzer);
         Assert.Single(tagmapping.Fields!);
 
-        //var nalcField = (TextProperty?) tagmapping.Fields!["na"];
-        //Assert.NotNull(nalcField);
-        //Assert.Equal("nalc", nalcField.Analyzer);
+        var nalcField = (KeywordProperty?)tagmapping.Fields!["keyword"];
+        Assert.NotNull(nalcField);
 
         //verify mapping of the payload properties prefixed with txt
         var txtTemplate = mapping.DynamicTemplates.Single(d => d.Keys.Contains("txt"));
         var txtTemplateKey = txtTemplate["txt"];
         Assert.NotNull(txtTemplateKey);
-        Assert.Equal("txt_*", txtTemplateKey.Match);
+        Assert.Equal("txt_*", txtTemplateKey.Match!.First());
     }
 
     [Fact]

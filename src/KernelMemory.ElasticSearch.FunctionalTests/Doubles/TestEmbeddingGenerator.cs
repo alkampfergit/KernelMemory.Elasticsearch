@@ -12,6 +12,11 @@ namespace KernelMemory.ElasticSearch.FunctionalTests.Doubles
             return text.Length;
         }
 
+        public IReadOnlyList<string> GetTokens(string text)
+        {
+            return text.Select(c => c.ToString()).ToArray();
+        }
+
         public Task<Embedding> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             var hash = text.GetHashCode();
