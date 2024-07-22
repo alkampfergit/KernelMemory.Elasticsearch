@@ -3,11 +3,11 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Alkampfer.KernelMemory.Extensions.Interfaces" Version="0.7.1" />
+    <PackageVersion Include="Alkampfer.KernelMemory.Extensions.Interfaces" Version="0.8.0" />
     <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.13.10" />
-    <PackageVersion Include="Microsoft.KernelMemory.Abstractions" Version="0.61.240524.1" />
+    <PackageVersion Include="Microsoft.KernelMemory.Abstractions" Version="0.65.240620.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.61.240524.1" />
+    <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.65.240620.1" />
   </ItemGroup>
   <!-- Test related assemblies -->
   <ItemGroup>
