@@ -5,19 +5,19 @@
   <ItemGroup>
     <PackageVersion Include="Alkampfer.KernelMemory.Extensions.Interfaces" Version="0.8.0" />
     <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.13.10" />
-    <PackageVersion Include="Microsoft.KernelMemory.Abstractions" Version="0.65.240620.1" />
+    <PackageVersion Include="Microsoft.KernelMemory.Abstractions" Version="0.68.240716.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.65.240620.1" />
+    <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.68.240716.1" />
   </ItemGroup>
   <!-- Test related assemblies -->
   <ItemGroup>
     <PackageVersion Include="coverlet.msbuild" Version="6.0.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
-    <PackageVersion Include="xunit" Version="2.8.1" />
+    <PackageVersion Include="xunit" Version="2.9.0" />
     <PackageVersion Include="xunit.abstractions" Version="2.0.3" />
     <PackageVersion Include="Xunit.DependencyInjection" Version="9.3.0" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
   </ItemGroup>
 </Project>
