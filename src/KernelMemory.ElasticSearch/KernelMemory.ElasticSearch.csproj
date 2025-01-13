@@ -18,6 +18,7 @@
   <ItemGroup>
     <PackageReference Include="Alkampfer.KernelMemory.Extensions.Interfaces" />
     <PackageReference Include="Elastic.Clients.Elasticsearch" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.KernelMemory.Abstractions" />
     <PackageReference Include="Microsoft.SourceLink.GitHub">
       <PrivateAssets>all</PrivateAssets>
