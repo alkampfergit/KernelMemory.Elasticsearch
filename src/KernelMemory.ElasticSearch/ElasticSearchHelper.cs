@@ -94,7 +94,7 @@ internal class ElasticSearchHelper
 
             if (!createIdxResponse.IsValidResponse)
             {
-                throw new Exception($"Failed to create index {indexName}");
+                throw new Exception($"Failed to create index {indexName} - {createIdxResponse.GetErrorFromElasticResponse()}");
             }
 
             CreatedIndices.Add(indexName);

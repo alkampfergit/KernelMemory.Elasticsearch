@@ -1,4 +1,5 @@
 ﻿using Elastic.Transport.Products.Elasticsearch;
+using System.Text;
 
 namespace KernelMemory.ElasticSearch
 {
@@ -6,17 +7,25 @@ namespace KernelMemory.ElasticSearch
     {
         internal static string GetErrorFromElasticResponse(this ElasticsearchResponse elasticsearchResponse)
         {
+            StringBuilder errors = new();
             if (elasticsearchResponse.ElasticsearchServerError != null)
             {
-                return $"{elasticsearchResponse.ElasticsearchServerError.Error}";
+                errors.AppendLine($"ElasticsearchServerError: {elasticsearchResponse.ElasticsearchServerError.Error}");
             }
 
-            if (elasticsearchResponse.ApiCallDetails?.OriginalException != null)
+            if (elasticsearchResponse.ApiCallDetails != null)
             {
-                return elasticsearchResponse.ApiCallDetails.OriginalException.ToString();
+                errors.AppendLine($"ApiResponseCode: {elasticsearchResponse.ApiCallDetails.HttpStatusCode}");
+                if (elasticsearchResponse.ApiCallDetails?.OriginalException != null)
+                {
+                    errors.AppendLine($"ApiCallException: {elasticsearchResponse.ApiCallDetails.OriginalException.ToString()}");
+                }
+                errors.AppendLine($"ApiResponseDebugInfo: {elasticsearchResponse.ApiCallDetails.DebugInformation}");
             }
 
-            return "Generic error";
+            if (errors.Length == 0) return "Generic error";
+
+            return errors.ToString();
         }
     }
 }
