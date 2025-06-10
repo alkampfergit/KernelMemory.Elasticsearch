@@ -9,6 +9,8 @@ on:
       - release/*
   pull_request: 
 
+  workflow_dispatch: # <-- Add this line to enable manual runs
+
 permissions:
   id-token: write
   contents: read
